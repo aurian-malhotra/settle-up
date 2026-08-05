@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Settle Up — poker night payouts</title>
+<meta name="theme-color" content="#12302A">
+<meta name="description" content="Enter buy-ins and cash-outs. Get the shortest list of who pays who.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#12302A;
+    --felt-deep:#0C1F1B;
+    --felt-line:#22453D;
+    --bone:#EFE9DC;
+    --bone-dim:#C9C2B4;
+    --muted:#8AA69C;
+    --chip-red:#C8452F;
+    --chip-blue:#5B93B8;
+    --gold:#D9A441;
+    --radius:14px;
+    --pad:18px;
+    --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --body:"Instrument Sans", system-ui, -apple-system, sans-serif;
+    --mono:"DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% 0%, #17392F 0%, var(--felt) 45%, var(--felt-deep) 100%)
+      fixed;
+    color:var(--bone);
+    font-family:var(--body);
+    font-size:16px;
+    line-height:1.45;
+    -webkit-text-size-adjust:100%;
+    padding:0 14px calc(96px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:520px;margin:0 auto}
+
+  /* ---------- header ---------- */
+  header.top{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+    padding:26px 2px 16px;
+  }
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 2px;
+  }
+  h1{
+    font-family:var(--display);font-weight:800;font-size:34px;line-height:.95;
+    letter-spacing:-.02em;margin:0;
+  }
+  .ghost{
+    background:none;border:1px solid var(--felt-line);color:var(--bone-dim);
+    font-family:var(--body);font-size:13px;font-weight:500;
+    padding:8px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  }
+  .ghost:hover{border-color:var(--muted);color:var(--bone)}
+
+  /* ---------- ledger (signature) ---------- */
+  .ledger{
+    background:rgba(0,0,0,.22);
+    border:1px solid var(--felt-line);
+    border-radius:var(--radius);
+    padding:16px var(--pad) 14px;
+  }
+  .ledger-figs{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .fig{display:flex;flex-direction:column;gap:2px}
+  .fig .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .fig .v{font-family:var(--mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}
+  .fig.right{text-align:right}
+  .track{
+    position:relative;height:9px;border-radius:999px;margin:14px 0 11px;
+    background:rgba(0,0,0,.35);border:1px solid var(--felt-line);overflow:hidden;
+  }
+  .fill{
+    position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;
+    background:linear-gradient(90deg,#2F6D5C,#4FA98C);
+    transition:width .35s cubic-bezier(.2,.7,.2,1), background .3s;
+  }
+  .track.off .fill{background:linear-gradient(90deg,#8E3B2A,var(--chip-red))}
+  .track.good .fill{background:linear-gradient(90deg,#3F8F76,var(--gold))}
+  .status{
+    display:flex;gap:9px;align-items:flex-start;
+    font-size:13.5px;color:var(--bone-dim);min-height:20px;
+  }
+  .status b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+  .status .dot{
+    flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;
+    background:var(--muted);
+  }
+  .status.good .dot{background:var(--gold);box-shadow:0 0 0 4px rgba(217,164,65,.15)}
+  .status.off .dot{background:var(--chip-red);box-shadow:0 0 0 4px rgba(200,69,47,.16)}
+  .status.off{color:#F0BCB0}
+
+  /* ---------- players ---------- */
+  .sec-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    padding:26px 4px 8px;
+  }
+  .sec-head h2{
+    font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);margin:0;
+  }
+  .hint{
+    font-size:13px;color:var(--muted);margin:0 4px 12px;line-height:1.4;
+  }
+  .player{
+    background:rgba(239,233,220,.045);
+    border:1px solid var(--felt-line);
+    border-radius:var(--radius);
+    padding:12px var(--pad) 12px;
+    margin-bottom:10px;
+  }
+  .player:focus-within{border-color:var(--muted)}
+  .p-top{display:flex;align-items:center;gap:8px}
+  input{
+    font-family:var(--body);color:var(--bone);background:none;border:none;
+    font-size:16px;width:100%;padding:0;
+  }
+  input:focus{outline:none}
+  input::placeholder{color:#5F7A72}
+  .p-name{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.01em}
+  .p-remove{
+    flex:none;background:none;border:none;color:#5F7A72;font-size:20px;line-height:1;
+    padding:4px 2px;cursor:pointer;
+  }
+  .p-remove:hover{color:var(--chip-red)}
+  .p-fields{display:flex;gap:10px;margin-top:10px}
+  .field{flex:1;min-width:0}
+  .f-label{
+    display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:4px;
+  }
+  .f-box{
+    display:flex;align-items:center;gap:2px;
+    background:rgba(0,0,0,.28);border:1px solid var(--felt-line);
+    border-radius:10px;padding:9px 10px;
+  }
+  .f-box:focus-within{border-color:var(--gold)}
+  .cur{font-family:var(--mono);color:var(--muted);font-size:15px}
+  .f-box input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums}
+  .rebuy{
+    flex:none;background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.3);
+    color:var(--gold);font-family:var(--mono);font-size:12px;
+    border-radius:8px;padding:5px 7px;cursor:pointer;
+  }
+  .rebuy:hover{background:rgba(217,164,65,.2)}
+  .p-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-top:11px;padding-top:10px;border-top:1px dashed var(--felt-line);
+  }
+  .p-handle{font-size:13px;font-family:var(--mono);flex:1;min-width:0}
+  .p-net{
+    font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;
+    color:var(--muted);white-space:nowrap;
+  }
+  .p-net.up{color:var(--gold)}
+  .p-net.down{color:#E08A78}
+  .add{
+    width:100%;background:none;border:1px dashed var(--felt-line);color:var(--bone-dim);
+    font-family:var(--body);font-size:15px;padding:13px;border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .add:hover{border-color:var(--muted);color:var(--bone)}
+
+  /* ---------- settle bar ---------- */
+  .bar{
+    position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top,var(--felt-deep) 62%,rgba(12,31,27,0));
+  }
+  .bar .wrap{display:block}
+  .settle{
+    width:100%;border:none;border-radius:12px;cursor:pointer;
+    font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.01em;
+    padding:16px;background:var(--gold);color:#231803;
+  }
+  .settle:disabled{background:#274841;color:#658279;cursor:not-allowed}
+
+  /* ---------- results ---------- */
+  .results{margin-top:26px}
+  .pay{
+    display:flex;align-items:center;gap:12px;
+    border-top:1px solid var(--felt-line);padding:15px 4px;
+  }
+  .pay:last-of-type{border-bottom:1px solid var(--felt-line)}
+  .pay-who{flex:1;min-width:0;font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .pay-who .arw{color:var(--gold);margin:0 7px;font-family:var(--body);font-weight:400}
+  .pay-amt{
+    font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums;
+    color:var(--bone);white-space:nowrap;
+  }
+  .pay-acts{display:flex;gap:6px;flex:none}
+  .chipbtn{
+    display:inline-flex;align-items:center;text-decoration:none;
+    background:rgba(91,147,184,.14);border:1px solid rgba(91,147,184,.35);
+    color:#A8D0E6;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    padding:6px 9px;border-radius:8px;cursor:pointer;
+  }
+  .chipbtn:hover{background:rgba(91,147,184,.26)}
+  .chipbtn.copy{background:rgba(239,233,220,.07);border-color:var(--felt-line);color:var(--bone-dim)}
+  .even{
+    text-align:center;padding:28px 10px;color:var(--bone-dim);
+    border:1px dashed var(--felt-line);border-radius:var(--radius);
+  }
+  .share-row{display:flex;gap:8px;margin-top:16px}
+  .share-row button{flex:1}
+  .note{font-size:12.5px;color:var(--muted);margin:10px 4px 0;line-height:1.5}
+  footer{padding:34px 4px 10px;color:#5F7A72;font-size:12px;font-family:var(--mono)}
+  .hidden{display:none !important}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="eyebrow">Poker night</p>
+      <h1>Settle Up</h1>
+    </div>
+    <button class="ghost" id="newGame" type="button">New game</button>
+  </header>
+
+  <!-- ======== CALCULATOR ======== -->
+  <main id="calc">
+    <section class="ledger" aria-live="polite">
+      <div class="ledger-figs">
+        <div class="fig">
+          <span class="k">In the pot</span>
+          <span class="v" id="totalIn">$0.00</span>
+        </div>
+        <div class="fig right">
+          <span class="k">On the table</span>
+          <span class="v" id="totalOut">$0.00</span>
+        </div>
+      </div>
+      <div class="track" id="track"><div class="fill" id="fill"></div></div>
+      <p class="status" id="status"><span class="dot"></span><span id="statusText">Add everyone who played to get started.</span></p>
+    </section>
+
+    <div class="sec-head"><h2>Players</h2></div>
+    <p class="hint">Cash-out is <strong>everything in front of you</strong> at the end — all your chips, not your winnings. Don't subtract your buy-in.</p>
+
+    <div id="players"></div>
+    <datalist id="roster"></datalist>
+    <button class="add" id="addPlayer" type="button">+ Add player</button>
+
+    <section class="results hidden" id="results" aria-live="polite">
+      <div class="sec-head"><h2>Who pays who</h2></div>
+      <div id="payList"></div>
+      <div class="share-row">
+        <button class="ghost" id="shareBtn" type="button">Copy link for the group chat</button>
+      </div>
+      <p class="note" id="shareNote">Anyone who opens the link sees this same list on their own phone. Nothing is uploaded — the numbers travel inside the link itself.</p>
+    </section>
+  </main>
+
+  <!-- ======== SHARED VIEW ======== -->
+  <main id="shared" class="hidden">
+    <div id="sharedList"></div>
+    <p class="note">Sent from tonight's game.</p>
+    <div class="share-row"><button class="ghost" id="openCalc" type="button">Open the calculator</button></div>
+  </main>
+
+  <footer>settle up · exact to the penny</footer>
+</div>
+
+<div class="bar" id="bar">
+  <div class="wrap">
+    <button class="settle" id="settleBtn" type="button" disabled>Settle up</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- money helpers ---------- */
+  function money(c){ return (c<0?"-":"") + "$" + (Math.abs(c)/100).toFixed(2); }
+  function plain(c){ return (Math.abs(c)/100).toFixed(2); }
+  function parseMoney(str){
+    if(str===undefined || str===null) return null;
+    var s = String(str).replace(/[^0-9.]/g,"");
+    if(s==="" || s===".") return null;
+    var v = Number(s);
+    if(!isFinite(v)) return null;
+    return Math.round(v*100);
+  }
+
+  /* ---------- roster storage (degrades to memory) ---------- */
+  var KEY="settleup.roster.v1", memRoster=null;
+  function loadRoster(){
+    try{ var r=window.localStorage.getItem(KEY); if(r) return JSON.parse(r); }catch(e){}
+    return memRoster || [];
+  }
+  function saveRoster(list){
+    memRoster=list;
+    try{ window.localStorage.setItem(KEY, JSON.stringify(list)); }catch(e){}
+  }
+  function rememberPlayers(players){
+    var list=loadRoster();
+    players.forEach(function(p){
+      if(!p.name) return;
+      var hit=null;
+      for(var i=0;i<list.length;i++){ if(list[i].name.toLowerCase()===p.name.toLowerCase()){ hit=list[i]; break; } }
+      if(hit){ if(p.handle) hit.handle=p.handle; }
+      else list.push({name:p.name, handle:p.handle||""});
+    });
+    saveRoster(list.slice(-40));
+    fillDatalist();
+  }
+  function fillDatalist(){
+    var dl=document.getElementById("roster");
+    dl.innerHTML="";
+    loadRoster().forEach(function(r){
+      var o=document.createElement("option"); o.value=r.name; dl.appendChild(o);
+    });
+  }
+  function handleFor(name){
+    var list=loadRoster();
+    for(var i=0;i<list.length;i++){ if(list[i].name.toLowerCase()===name.toLowerCase()) return list[i].handle||""; }
+    return "";
+  }
+
+  /* ---------- state ---------- */
+  var players=[], nextId=1;
+  var elPlayers=document.getElementById("players");
+
+  function addPlayer(name, handle){
+    var p={id:nextId++, name:name||"", buyin:null, cashout:null, handle:handle||"", node:null};
+    players.push(p);
+    elPlayers.appendChild(buildRow(p));
+    return p;
+  }
+
+  function buildRow(p){
+    var el=document.createElement("article");
+    el.className="player";
+    el.innerHTML =
+      '<div class="p-top">'+
+        '<input class="p-name" list="roster" placeholder="Name" autocomplete="off" aria-label="Player name">'+
+        '<button class="p-remove" type="button" aria-label="Remove player">&times;</button>'+
+      '</div>'+
+      '<div class="p-fields">'+
+        '<label class="field"><span class="f-label">Buy-in</span>'+
+          '<div class="f-box"><span class="cur">$</span>'+
+          '<input class="p-buyin" inputmode="decimal" placeholder="10.00" aria-label="Buy-in">'+
+          '<button class="rebuy" type="button" title="Add a $10 rebuy">+10</button></div>'+
+        '</label>'+
+        '<label class="field"><span class="f-label">Cash-out</span>'+
+          '<div class="f-box"><span class="cur">$</span>'+
+          '<input class="p-cashout" inputmode="decimal" placeholder="0.00" aria-label="Cash-out">'+
+          '</div>'+
+        '</label>'+
+      '</div>'+
+      '<div class="p-foot">'+
+        '<span class="p-net">&mdash;</span>'+
+        '<input class="p-handle" placeholder="@venmo or $cashtag" autocomplete="off" aria-label="Payment handle">'+
+      '</div>';
+
+    var name=el.querySelector(".p-name"),
+        buyin=el.querySelector(".p-buyin"),
+        cash=el.querySelector(".p-cashout"),
+        hand=el.querySelector(".p-handle");
+
+    name.value=p.name; hand.value=p.handle;
+    if(p.buyin!==null) buyin.value=plain(p.buyin);
+    if(p.cashout!==null) cash.value=plain(p.cashout);
+
+    name.addEventListener("input", function(){
+      p.name=name.value.trim();
+      var h=handleFor(p.name);
+      if(h && !hand.value){ hand.value=h; p.handle=h; }
+      refresh();
+    });
+    buyin.addEventListener("input", function(){ p.buyin=parseMoney(buyin.value); refresh(); });
+    cash.addEventListener("input", function(){ p.cashout=parseMoney(cash.value); refresh(); });
+    hand.addEventListener("input", function(){ p.handle=hand.value.trim(); });
+
+    el.querySelector(".rebuy").addEventListener("click", function(){
+      p.buyin=(p.buyin||0)+1000;
+      buyin.value=plain(p.buyin);
+      refresh();
+    });
+    el.querySelector(".p-remove").addEventListener("click", function(){
+      players=players.filter(function(x){ return x.id!==p.id; });
+      el.remove();
+      refresh();
+    });
+
+    p.node=el;
+    p.netEl=el.querySelector(".p-net");
+    return el;
+  }
+
+  /* ---------- derived ---------- */
+  function totals(){
+    var tin=0, tout=0, missingCash=0, named=0;
+    players.forEach(function(p){
+      tin += (p.buyin||0);
+      tout += (p.cashout||0);
+      if(p.cashout===null) missingCash++;
+      if(p.name) named++;
+    });
+    return {tin:tin, tout:tout, diff:tout-tin, missingCash:missingCash, named:named};
+  }
+
+  function refresh(){
+    var t=totals();
+    document.getElementById("totalIn").textContent=money(t.tin);
+    document.getElementById("totalOut").textContent=money(t.tout);
+
+    var pct = t.tin>0 ? Math.min(100, (t.tout/t.tin)*100) : 0;
+    var track=document.getElementById("track"), fill=document.getElementById("fill");
+    fill.style.width=pct+"%";
+
+    players.forEach(function(p){
+      if(p.buyin===null && p.cashout===null){ p.netEl.textContent="—"; p.netEl.className="p-net"; return; }
+      var n=(p.cashout||0)-(p.buyin||0);
+      p.netEl.textContent=(n>0?"+":"")+money(n);
+      p.netEl.className="p-net "+(n>0?"up":(n<0?"down":""));
+    });
+
+    var st=document.getElementById("status"), txt=document.getElementById("statusText");
+    var ready=false;
+    track.className="track";
+    st.className="status";
+
+    if(players.length<2 || t.named<2){
+      txt.textContent="Add everyone who played to get started.";
+    } else if(t.missingCash>0){
+      txt.innerHTML = t.missingCash+" player"+(t.missingCash>1?"s":"")+" still need"+(t.missingCash>1?"":"s")+" a cash-out.";
+    } else if(t.diff===0 && t.tin===0){
+      txt.textContent="Enter the buy-ins.";
+    } else if(t.diff===0){
+      st.className="status good"; track.className="track good";
+      txt.innerHTML="Books balance. <b>"+money(t.tin)+"</b> accounted for.";
+      ready=true;
+    } else if(t.diff<0){
+      st.className="status off"; track.className="track off";
+      txt.innerHTML="<b>"+money(-t.diff)+"</b> short. There's less on the table than went into the pot — recount the chips and re-enter.";
+    } else {
+      st.className="status off"; track.className="track off";
+      txt.innerHTML="<b>"+money(t.diff)+"</b> over. There are more chips on the table than money in the pot — recount and re-enter.";
+    }
+
+    document.getElementById("settleBtn").disabled=!ready;
+    if(!ready) document.getElementById("results").classList.add("hidden");
+  }
+
+  /* ---------- settlement ---------- */
+  function computeTx(list){
+    var cred=[], deb=[];
+    list.forEach(function(p){
+      if(p.net>0) cred.push({name:p.name, amt:p.net, handle:p.handle});
+      else if(p.net<0) deb.push({name:p.name, amt:-p.net, handle:p.handle});
+    });
+    cred.sort(function(a,b){ return b.amt-a.amt; });
+    deb.sort(function(a,b){ return b.amt-a.amt; });
+    var tx=[], i=0, j=0;
+    while(i<deb.length && j<cred.length){
+      var a=Math.min(deb[i].amt, cred[j].amt);
+      if(a>0) tx.push({from:deb[i].name, to:cred[j].name, handle:cred[j].handle, amount:a});
+      deb[i].amt-=a; cred[j].amt-=a;
+      if(deb[i].amt===0) i++;
+      if(cred[j].amt===0) j++;
+    }
+    return tx;
+  }
+
+  function payLink(handle, amountCents, payeeName){
+    if(!handle) return null;
+    var amt=plain(amountCents);
+    if(handle.charAt(0)==="$"){
+      return {label:"Cash App", url:"https://cash.app/"+encodeURIComponent(handle)+"/"+amt};
+    }
+    var h=handle.replace(/^@/,"");
+    return {label:"Venmo", url:"https://venmo.com/?txn=pay&audience=private&recipients="+encodeURIComponent(h)+"&amount="+amt+"&note="+encodeURIComponent("Poker night")};
+  }
+
+  function renderPayments(tx, container){
+    container.innerHTML="";
+    if(!tx.length){
+      container.innerHTML='<p class="even">Everybody broke even. Nobody owes anybody.</p>';
+      return;
+    }
+    tx.forEach(function(t){
+      var row=document.createElement("div");
+      row.className="pay";
+      var who=document.createElement("div");
+      who.className="pay-who";
+      who.innerHTML=esc(t.from)+'<span class="arw">&rarr;</span>'+esc(t.to);
+      var amt=document.createElement("div");
+      amt.className="pay-amt"; amt.textContent=money(t.amount);
+      var acts=document.createElement("div");
+      acts.className="pay-acts";
+
+      var link=payLink(t.handle, t.amount, t.to);
+      if(link){
+        var a=document.createElement("a");
+        a.className="chipbtn"; a.href=link.url; a.target="_blank"; a.rel="noopener";
+        a.textContent=link.label;
+        acts.appendChild(a);
+      }
+      var c=document.createElement("button");
+      c.type="button"; c.className="chipbtn copy"; c.textContent="Copy";
+      c.addEventListener("click", function(){
+        copy(t.from+" pays "+t.to+" "+money(t.amount), c, "Copied");
+      });
+      acts.appendChild(c);
+
+      row.appendChild(who); row.appendChild(amt); row.appendChild(acts);
+      container.appendChild(row);
+    });
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(m){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]; }); }
+
+  function copy(text, btn, done){
+    var old=btn.textContent;
+    function ok(){ btn.textContent=done; setTimeout(function(){ btn.textContent=old; }, 1400); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(ok, function(){ fallback(text, ok); });
+    } else fallback(text, ok);
+  }
+  function fallback(text, ok){
+    var ta=document.createElement("textarea");
+    ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); ok(); }catch(e){ window.prompt("Copy this:", text); }
+    ta.remove();
+  }
+
+  /* ---------- share link ---------- */
+  function encode(obj){
+    var s=JSON.stringify(obj);
+    var b=btoa(unescape(encodeURIComponent(s)));
+    return b.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  function decode(str){
+    var b=str.replace(/-/g,"+").replace(/_/g,"/");
+    while(b.length%4) b+="=";
+    return JSON.parse(decodeURIComponent(escape(atob(b))));
+  }
+
+  var lastTx=[];
+
+  document.getElementById("settleBtn").addEventListener("click", function(){
+    var list=players.filter(function(p){ return p.name; }).map(function(p){
+      return {name:p.name, net:(p.cashout||0)-(p.buyin||0), handle:p.handle};
+    });
+    lastTx=computeTx(list);
+    rememberPlayers(list);
+    renderPayments(lastTx, document.getElementById("payList"));
+    var r=document.getElementById("results");
+    r.classList.remove("hidden");
+    r.scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
+  document.getElementById("shareBtn").addEventListener("click", function(){
+    var payload=lastTx.map(function(t){ return [t.from, t.to, t.amount, t.handle||""]; });
+    var url=location.origin+location.pathname+"#r="+encode(payload);
+    copy(url, this, "Link copied");
+  });
+
+  /* ---------- new game ---------- */
+  document.getElementById("newGame").addEventListener("click", function(){
+    if(players.length && !window.confirm("Clear the numbers and start a new game? Names stay.")) return;
+    var keep=players.filter(function(p){ return p.name; }).map(function(p){ return {name:p.name, handle:p.handle}; });
+    elPlayers.innerHTML=""; players=[]; lastTx=[];
+    document.getElementById("results").classList.add("hidden");
+    if(keep.length) keep.forEach(function(k){ addPlayer(k.name, k.handle); });
+    else { addPlayer(); addPlayer(); }
+    refresh();
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+
+  document.getElementById("addPlayer").addEventListener("click", function(){
+    var p=addPlayer();
+    p.node.querySelector(".p-name").focus();
+    refresh();
+  });
+
+  /* ---------- shared results view ---------- */
+  function showShared(payload){
+    document.getElementById("calc").classList.add("hidden");
+    document.getElementById("bar").classList.add("hidden");
+    document.getElementById("shared").classList.remove("hidden");
+    document.getElementById("eyebrow").textContent="Tonight's payouts";
+    var tx=payload.map(function(a){ return {from:a[0], to:a[1], amount:a[2], handle:a[3]}; });
+    renderPayments(tx, document.getElementById("sharedList"));
+  }
+  document.getElementById("openCalc").addEventListener("click", function(){
+    location.hash="";
+    location.reload();
+  });
+
+  /* ---------- boot ---------- */
+  fillDatalist();
+  var h=location.hash;
+  if(h.indexOf("#r=")===0){
+    try{ showShared(decode(h.slice(3))); }
+    catch(e){ location.hash=""; startCalc(); }
+  } else startCalc();
+
+  function startCalc(){
+    var roster=loadRoster();
+    if(roster.length>=2) roster.slice(-6).forEach(function(r){ addPlayer(r.name, r.handle); });
+    else { addPlayer(); addPlayer(); }
+    refresh();
+  }
+})();
+</script>
+</body>
+</html>
