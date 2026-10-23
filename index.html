@@ -3,9 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Settle Up — poker night payouts</title>
+<title>Settle Up</title>
 <meta name="theme-color" content="#12302A">
-<meta name="description" content="Enter buy-ins and cash-outs. Get the shortest list of who pays who.">
+<meta name="description" content="Poker night buy-ins, cash-outs, who owes who, and everyone's all-time profit and loss.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Settle Up">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -17,9 +21,14 @@
     --bone:#EFE9DC;
     --bone-dim:#C9C2B4;
     --muted:#8AA69C;
+    --faint:#5F7A72;
     --chip-red:#C8452F;
-    --chip-blue:#5B93B8;
     --gold:#D9A441;
+    --up:#E8C04A;
+    --down:#E08A78;
+    --ok:#6FD39D;
+    --warn:#F2CF61;
+    --bad:#F09A86;
     --radius:14px;
     --pad:18px;
     --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
@@ -29,592 +38,1083 @@
   *{box-sizing:border-box}
   html,body{margin:0}
   body{
-    background:
-      radial-gradient(120% 80% at 50% 0%, #17392F 0%, var(--felt) 45%, var(--felt-deep) 100%)
-      fixed;
+    background:radial-gradient(120% 80% at 50% 0%, #17392F 0%, var(--felt) 45%, var(--felt-deep) 100%) fixed;
+    background-color:var(--felt-deep);
     color:var(--bone);
     font-family:var(--body);
     font-size:16px;
     line-height:1.45;
     -webkit-text-size-adjust:100%;
-    padding:0 14px calc(96px + env(safe-area-inset-bottom));
+    padding:env(safe-area-inset-top) 14px calc(110px + env(safe-area-inset-bottom));
+    min-height:100vh;
   }
   .wrap{max-width:520px;margin:0 auto}
+  a{color:inherit}
 
   /* ---------- header ---------- */
-  header.top{
-    display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
-    padding:26px 2px 16px;
-  }
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:24px 2px 14px}
   .eyebrow{
-    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--muted);margin:0 0 2px;
+    display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 4px;text-decoration:none;
   }
-  h1{
-    font-family:var(--display);font-weight:800;font-size:34px;line-height:.95;
-    letter-spacing:-.02em;margin:0;
-  }
+  a.eyebrow:hover{color:var(--bone)}
+  h1{font-family:var(--display);font-weight:800;font-size:34px;line-height:.98;letter-spacing:-.02em;margin:0;word-break:break-word}
   .ghost{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;
     background:none;border:1px solid var(--felt-line);color:var(--bone-dim);
     font-family:var(--body);font-size:13px;font-weight:500;
     padding:8px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;
   }
   .ghost:hover{border-color:var(--muted);color:var(--bone)}
+  .ghost.danger{color:var(--bad);border-color:rgba(224,138,120,.35)}
 
-  /* ---------- ledger (signature) ---------- */
-  .ledger{
-    background:rgba(0,0,0,.22);
-    border:1px solid var(--felt-line);
-    border-radius:var(--radius);
-    padding:16px var(--pad) 14px;
+  .banner{
+    font-size:12.5px;line-height:1.45;color:var(--bone-dim);
+    border:1px dashed var(--felt-line);border-radius:12px;padding:9px 12px;margin:0 0 12px;
   }
+  .banner b{color:var(--bone)}
+  .banner.err{border-style:solid;border-color:rgba(224,138,120,.5);color:#F5C9BE;background:rgba(200,69,47,.12)}
+
+  /* ---------- generic ---------- */
+  .card{
+    background:rgba(0,0,0,.22);border:1px solid var(--felt-line);border-radius:var(--radius);
+    padding:15px var(--pad);
+  }
+  .card h3{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.01em;margin:0 0 3px}
+  .card p{margin:0;color:var(--bone-dim);font-size:14px}
+  .card .ghost{margin-top:12px}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:24px 4px 8px}
+  .sec-head h2{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0}
+  .sec-head .sub{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .hint{font-size:13px;color:var(--muted);margin:8px 2px 0;line-height:1.45}
+  .hint strong{color:var(--bone-dim);font-weight:600}
+  .loading{color:var(--muted);font-size:14px;padding:30px 4px}
+  .hidden{display:none !important}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--muted)}
+
+  /* ---------- lists of names ---------- */
+  .list{display:flex;flex-direction:column;gap:8px}
+  .prow{
+    display:flex;align-items:center;gap:12px;text-decoration:none;
+    background:rgba(239,233,220,.045);border:1px solid var(--felt-line);border-radius:var(--radius);
+    padding:13px var(--pad);cursor:pointer;
+  }
+  .prow:hover,.prow:focus-visible{border-color:var(--muted)}
+  .prow.me{border-color:rgba(217,164,65,.55)}
+  .p-main{flex:1;min-width:0}
+  .p-name{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.01em;line-height:1.15;display:flex;align-items:center;gap:8px;flex-wrap:wrap;overflow-wrap:anywhere}
+  .p-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .p-pl{font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .p-pl small{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:1px}
+  .tag{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;
+    color:var(--gold);border:1px solid rgba(217,164,65,.4);border-radius:6px;padding:2px 6px;
+  }
+  .tag.you{color:var(--bone-dim);border-color:var(--felt-line)}
+  .chev{color:var(--faint);font-size:20px;line-height:1}
+  .add{
+    width:100%;background:none;border:1px dashed var(--felt-line);color:var(--bone-dim);
+    font-family:var(--body);font-size:15px;padding:13px;border-radius:var(--radius);cursor:pointer;margin-top:8px;
+  }
+  .add:hover{border-color:var(--muted);color:var(--bone)}
+  .addrow{
+    display:flex;gap:8px;align-items:center;margin-top:8px;
+    background:rgba(0,0,0,.28);border:1px solid var(--gold);border-radius:var(--radius);padding:8px 8px 8px 14px;
+  }
+  .addrow input{flex:1;min-width:0;font-family:var(--display);font-weight:600;font-size:18px}
+  .pill{
+    flex:none;border:none;border-radius:10px;cursor:pointer;background:var(--gold);color:#231803;
+    font-family:var(--display);font-weight:700;font-size:15px;padding:10px 16px;
+  }
+  .foot-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+
+  input,select{font-family:var(--body);color:var(--bone);background:none;border:none;font-size:16px;width:100%;padding:0}
+  input:focus,select:focus{outline:none}
+  input::placeholder{color:var(--faint)}
+
+  /* ---------- entry ---------- */
+  .lifeline{font-size:14px;color:var(--bone-dim);margin:-4px 2px 16px}
+  .lifeline b{font-family:var(--mono);font-weight:500}
+  .field{display:block;margin-bottom:14px}
+  .f-label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .f-box{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.28);border:1px solid var(--felt-line);border-radius:11px;padding:12px 12px}
+  .f-box:focus-within{border-color:var(--gold)}
+  .cur{font-family:var(--mono);color:var(--muted);font-size:20px}
+  .f-box input{font-family:var(--mono);font-size:22px;font-variant-numeric:tabular-nums}
+  .rebuys{display:flex;gap:6px;margin-top:8px}
+  .rebuy{
+    background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.3);color:var(--gold);
+    font-family:var(--mono);font-size:13px;border-radius:8px;padding:7px 11px;cursor:pointer;
+  }
+  .rebuy:hover{background:rgba(217,164,65,.2)}
+  .netline{display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--felt-line);padding-top:12px;margin-top:4px}
+  .netline .f-label{margin:0}
+  .netline .mono{font-size:18px}
+  .errmsg{color:var(--bad);font-size:13.5px;margin:10px 2px 0;min-height:1px}
+
+  /* ---------- ledger ---------- */
   .ledger-figs{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   .fig{display:flex;flex-direction:column;gap:2px}
   .fig .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
   .fig .v{font-family:var(--mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}
   .fig.right{text-align:right}
-  .track{
-    position:relative;height:9px;border-radius:999px;margin:14px 0 11px;
-    background:rgba(0,0,0,.35);border:1px solid var(--felt-line);overflow:hidden;
-  }
-  .fill{
-    position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;
-    background:linear-gradient(90deg,#2F6D5C,#4FA98C);
-    transition:width .35s cubic-bezier(.2,.7,.2,1), background .3s;
-  }
-  .track.off .fill{background:linear-gradient(90deg,#8E3B2A,var(--chip-red))}
-  .track.good .fill{background:linear-gradient(90deg,#3F8F76,var(--gold))}
-  .status{
-    display:flex;gap:9px;align-items:flex-start;
-    font-size:13.5px;color:var(--bone-dim);min-height:20px;
-  }
-  .status b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
-  .status .dot{
-    flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;
-    background:var(--muted);
-  }
-  .status.good .dot{background:var(--gold);box-shadow:0 0 0 4px rgba(217,164,65,.15)}
-  .status.off .dot{background:var(--chip-red);box-shadow:0 0 0 4px rgba(200,69,47,.16)}
-  .status.off{color:#F0BCB0}
+  .track{position:relative;height:9px;border-radius:999px;margin:13px 0 10px;background:rgba(0,0,0,.35);border:1px solid var(--felt-line);overflow:hidden}
+  .fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;background:linear-gradient(90deg,#2F6D5C,#4FA98C);transition:width .35s cubic-bezier(.2,.7,.2,1)}
+  .track.green .fill{background:linear-gradient(90deg,#2F8A62,var(--ok))}
+  .track.yellow .fill{background:linear-gradient(90deg,#9C7A22,var(--warn))}
+  .track.red .fill{background:linear-gradient(90deg,#8E3B2A,var(--chip-red))}
+  .ledger-note{font-size:13.5px;color:var(--bone-dim)}
 
-  /* ---------- players ---------- */
-  .sec-head{
-    display:flex;align-items:baseline;justify-content:space-between;
-    padding:26px 4px 8px;
-  }
-  .sec-head h2{
-    font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.18em;
-    text-transform:uppercase;color:var(--muted);margin:0;
-  }
-  .hint{
-    font-size:13px;color:var(--muted);margin:0 4px 12px;line-height:1.4;
-  }
-  .player{
-    background:rgba(239,233,220,.045);
-    border:1px solid var(--felt-line);
-    border-radius:var(--radius);
-    padding:12px var(--pad) 12px;
-    margin-bottom:10px;
-  }
-  .player:focus-within{border-color:var(--muted)}
-  .p-top{display:flex;align-items:center;gap:8px}
-  input{
-    font-family:var(--body);color:var(--bone);background:none;border:none;
-    font-size:16px;width:100%;padding:0;
-  }
-  input:focus{outline:none}
-  input::placeholder{color:#5F7A72}
-  .p-name{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.01em}
-  .p-remove{
-    flex:none;background:none;border:none;color:#5F7A72;font-size:20px;line-height:1;
-    padding:4px 2px;cursor:pointer;
-  }
-  .p-remove:hover{color:var(--chip-red)}
-  .p-fields{display:flex;gap:10px;margin-top:10px}
-  .field{flex:1;min-width:0}
-  .f-label{
-    display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--muted);margin-bottom:4px;
-  }
-  .f-box{
-    display:flex;align-items:center;gap:2px;
-    background:rgba(0,0,0,.28);border:1px solid var(--felt-line);
-    border-radius:10px;padding:9px 10px;
-  }
-  .f-box:focus-within{border-color:var(--gold)}
-  .cur{font-family:var(--mono);color:var(--muted);font-size:15px}
-  .f-box input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums}
-  .rebuy{
-    flex:none;background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.3);
-    color:var(--gold);font-family:var(--mono);font-size:12px;
-    border-radius:8px;padding:5px 7px;cursor:pointer;
-  }
-  .rebuy:hover{background:rgba(217,164,65,.2)}
-  .p-foot{
-    display:flex;align-items:center;justify-content:space-between;gap:12px;
-    margin-top:11px;padding-top:10px;border-top:1px dashed var(--felt-line);
-  }
-  .p-handle{font-size:13px;font-family:var(--mono);flex:1;min-width:0}
-  .p-net{
-    font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;
-    color:var(--muted);white-space:nowrap;
-  }
-  .p-net.up{color:var(--gold)}
-  .p-net.down{color:#E08A78}
-  .add{
-    width:100%;background:none;border:1px dashed var(--felt-line);color:var(--bone-dim);
-    font-family:var(--body);font-size:15px;padding:13px;border-radius:var(--radius);
-    cursor:pointer;
-  }
-  .add:hover{border-color:var(--muted);color:var(--bone)}
+  /* ---------- table rows ---------- */
+  .trow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--felt-line);padding:12px 4px;text-decoration:none}
+  .trow:last-child{border-bottom:1px solid var(--felt-line)}
+  .trow .p-name{font-size:17px}
+  .tsub{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--bone-dim);margin-top:3px}
+  .tsub small{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-right:4px}
+  .tsub .sep{color:var(--faint);margin:0 7px}
+  .tnet{flex:none;text-align:right;font-size:16px}
+  .tnet .settles{display:block;font-size:10.5px;color:var(--muted)}
+  .playing{color:var(--faint);font-style:italic;font-family:var(--body)}
 
-  /* ---------- settle bar ---------- */
-  .bar{
-    position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));
-    background:linear-gradient(to top,var(--felt-deep) 62%,rgba(12,31,27,0));
+  /* ---------- verdict ---------- */
+  .verdict{border-radius:var(--radius);padding:14px 16px;border:1px solid;margin:18px 0 0}
+  .verdict h3{font-family:var(--display);font-weight:700;font-size:19px;margin:0 0 4px;display:flex;align-items:center;gap:9px}
+  .verdict h3::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px rgba(255,255,255,.06)}
+  .verdict p{margin:0;font-size:13.5px;color:var(--bone-dim)}
+  .verdict p b{font-family:var(--mono);font-weight:500;color:var(--bone)}
+  .verdict.green{background:rgba(111,211,157,.10);border-color:rgba(111,211,157,.45)} .verdict.green h3{color:var(--ok)}
+  .verdict.yellow{background:rgba(242,207,97,.10);border-color:rgba(242,207,97,.45)} .verdict.yellow h3{color:var(--warn)}
+  .verdict.red{background:rgba(200,69,47,.15);border-color:rgba(240,154,134,.5)} .verdict.red h3{color:var(--bad)}
+
+  /* ---------- you card + payments ---------- */
+  .youcard{margin-top:12px}
+  .you-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .you-head .f-label{margin:0}
+  .youcard select{
+    width:auto;max-width:60%;font-family:var(--display);font-weight:600;font-size:16px;color:var(--bone);
+    background:rgba(0,0,0,.28);border:1px solid var(--felt-line);border-radius:9px;padding:6px 10px;
   }
-  .bar .wrap{display:block}
-  .settle{
-    width:100%;border:none;border-radius:12px;cursor:pointer;
+  .youcard select option{color:#111}
+  .yline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;font-size:16px}
+  .yline .mono{font-size:17px}
+  .yline.owe .mono{color:var(--down)} .yline.get .mono{color:var(--up)}
+  .ysum{font-size:13px;color:var(--muted);border-top:1px dashed var(--felt-line);margin-top:6px;padding-top:9px}
+  .pay{display:flex;align-items:center;gap:12px;border-top:1px solid var(--felt-line);padding:13px 4px}
+  .pay:last-child{border-bottom:1px solid var(--felt-line)}
+  .pay-who{flex:1;min-width:0;font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .pay-who .arw{color:var(--gold);margin:0 7px;font-family:var(--body);font-weight:400}
+  .pay-amt{font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .even{text-align:center;padding:22px 10px;color:var(--bone-dim);border:1px dashed var(--felt-line);border-radius:var(--radius)}
+
+  /* ---------- history ---------- */
+  details.night{background:rgba(239,233,220,.045);border:1px solid var(--felt-line);border-radius:var(--radius);margin-bottom:8px}
+  details.night[open]{border-color:var(--muted)}
+  details.night summary{list-style:none;display:flex;align-items:center;gap:12px;padding:13px var(--pad);cursor:pointer}
+  details.night summary::-webkit-details-marker{display:none}
+  .dot{flex:none;width:9px;height:9px;border-radius:50%}
+  .dot.green{background:var(--ok)} .dot.yellow{background:var(--warn)} .dot.red{background:var(--bad)}
+  .night-body{padding:0 var(--pad) 14px}
+  .hrow{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--felt-line);font-size:15px}
+  .hrow:first-child{border-top:none}
+
+  /* ---------- bottom bar ---------- */
+  .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--felt-deep) 62%,rgba(12,31,27,0));z-index:5}
+  .bar-row{display:flex;gap:8px}
+  .primary{
+    flex:1;border:none;border-radius:12px;cursor:pointer;text-align:center;text-decoration:none;
     font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.01em;
     padding:16px;background:var(--gold);color:#231803;
   }
-  .settle:disabled{background:#274841;color:#658279;cursor:not-allowed}
-
-  /* ---------- results ---------- */
-  .results{margin-top:26px}
-  .pay{
-    display:flex;align-items:center;gap:12px;
-    border-top:1px solid var(--felt-line);padding:15px 4px;
+  .primary:disabled{background:#274841;color:#658279;cursor:not-allowed}
+  .secondary{
+    flex:none;border:1px solid var(--felt-line);border-radius:12px;cursor:pointer;background:rgba(12,31,27,.9);color:var(--bone);
+    font-family:var(--display);font-weight:600;font-size:16px;padding:16px 18px;
   }
-  .pay:last-of-type{border-bottom:1px solid var(--felt-line)}
-  .pay-who{flex:1;min-width:0;font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.01em}
-  .pay-who .arw{color:var(--gold);margin:0 7px;font-family:var(--body);font-weight:400}
-  .pay-amt{
-    font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums;
-    color:var(--bone);white-space:nowrap;
+  .toast{
+    position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;
+    background:var(--bone);color:#14231F;font-size:14px;font-weight:600;padding:10px 16px;border-radius:999px;
+    transition:opacity .2s, transform .2s;z-index:10;max-width:calc(100% - 40px);text-align:center;
   }
-  .pay-acts{display:flex;gap:6px;flex:none}
-  .chipbtn{
-    display:inline-flex;align-items:center;text-decoration:none;
-    background:rgba(91,147,184,.14);border:1px solid rgba(91,147,184,.35);
-    color:#A8D0E6;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
-    padding:6px 9px;border-radius:8px;cursor:pointer;
-  }
-  .chipbtn:hover{background:rgba(91,147,184,.26)}
-  .chipbtn.copy{background:rgba(239,233,220,.07);border-color:var(--felt-line);color:var(--bone-dim)}
-  .even{
-    text-align:center;padding:28px 10px;color:var(--bone-dim);
-    border:1px dashed var(--felt-line);border-radius:var(--radius);
-  }
-  .share-row{display:flex;gap:8px;margin-top:16px}
-  .share-row button{flex:1}
-  .note{font-size:12.5px;color:var(--muted);margin:10px 4px 0;line-height:1.5}
-  footer{padding:34px 4px 10px;color:#5F7A72;font-size:12px;font-family:var(--mono)}
-  .hidden{display:none !important}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  footer{padding:34px 4px 10px;color:var(--faint);font-size:12px;font-family:var(--mono)}
   :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
   @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 </style>
 </head>
 <body>
 <div class="wrap">
-
   <header class="top">
-    <div>
-      <p class="eyebrow" id="eyebrow">Poker night</p>
-      <h1>Settle Up</h1>
+    <div style="min-width:0">
+      <a class="eyebrow" id="crumb">Poker night</a>
+      <h1 id="title">Settle Up</h1>
     </div>
-    <button class="ghost" id="newGame" type="button">New game</button>
+    <div id="headAct"></div>
   </header>
-
-  <!-- ======== CALCULATOR ======== -->
-  <main id="calc">
-    <section class="ledger" aria-live="polite">
-      <div class="ledger-figs">
-        <div class="fig">
-          <span class="k">In the pot</span>
-          <span class="v" id="totalIn">$0.00</span>
-        </div>
-        <div class="fig right">
-          <span class="k">On the table</span>
-          <span class="v" id="totalOut">$0.00</span>
-        </div>
-      </div>
-      <div class="track" id="track"><div class="fill" id="fill"></div></div>
-      <p class="status" id="status"><span class="dot"></span><span id="statusText">Add everyone who played to get started.</span></p>
-    </section>
-
-    <div class="sec-head"><h2>Players</h2></div>
-    <p class="hint">Cash-out is <strong>everything in front of you</strong> at the end — all your chips, not your winnings. Don't subtract your buy-in.</p>
-
-    <div id="players"></div>
-    <datalist id="roster"></datalist>
-    <button class="add" id="addPlayer" type="button">+ Add player</button>
-
-    <section class="results hidden" id="results" aria-live="polite">
-      <div class="sec-head"><h2>Who pays who</h2></div>
-      <div id="payList"></div>
-      <div class="share-row">
-        <button class="ghost" id="shareBtn" type="button">Copy link for the group chat</button>
-      </div>
-      <p class="note" id="shareNote">Anyone who opens the link sees this same list on their own phone. Nothing is uploaded — the numbers travel inside the link itself.</p>
-    </section>
-  </main>
-
-  <!-- ======== SHARED VIEW ======== -->
-  <main id="shared" class="hidden">
-    <div id="sharedList"></div>
-    <p class="note">Sent from tonight's game.</p>
-    <div class="share-row"><button class="ghost" id="openCalc" type="button">Open the calculator</button></div>
-  </main>
-
+  <div id="banner"></div>
+  <main id="view"><p class="loading">Loading…</p></main>
   <footer>settle up · exact to the penny</footer>
 </div>
+<div class="bar hidden" id="bar"><div class="wrap" id="barInner"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<div class="bar" id="bar">
-  <div class="wrap">
-    <button class="settle" id="settleBtn" type="button" disabled>Settle up</button>
-  </div>
-</div>
+<script type="module">
+/* =====================================================================
+   FIREBASE CONFIG
+   Paste the config object from Firebase (Project settings > Your apps)
+   in place of null. Leave it null to run in demo mode, where data is
+   saved on this one device only.
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyC-Y8mNXDtEl4SS4wWJKte5B7DK9N3XkGs",
+  authDomain: "settle-up-17ce1.firebaseapp.com",
+  projectId: "settle-up-17ce1",
+  storageBucket: "settle-up-17ce1.firebasestorage.app",
+  messagingSenderId: "453274251483",
+  appId: "1:453274251483:web:9e020c195cacba8ffb5cfe"
+};
+const FIREBASE_SDK = "12.19.0";
 
-<script>
-(function(){
-  "use strict";
+/*UTIL-START*/
+function uid(){
+  const a = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let s = "";
+  const r = (globalThis.crypto && crypto.getRandomValues) ? crypto.getRandomValues(new Uint8Array(12)) : null;
+  for (let i = 0; i < 12; i++) s += a[(r ? r[i] : Math.floor(Math.random()*256)) % a.length];
+  return s;
+}
+function slugify(name){
+  const s = String(name).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24);
+  return s || "group";
+}
+/*UTIL-END*/
 
-  /* ---------- money helpers ---------- */
-  function money(c){ return (c<0?"-":"") + "$" + (Math.abs(c)/100).toFixed(2); }
-  function plain(c){ return (Math.abs(c)/100).toFixed(2); }
-  function parseMoney(str){
-    if(str===undefined || str===null) return null;
-    var s = String(str).replace(/[^0-9.]/g,"");
-    if(s==="" || s===".") return null;
-    var v = Number(s);
-    if(!isFinite(v)) return null;
-    return Math.round(v*100);
+/* ---------- money ---------- */
+const money = c => (c < 0 ? "-" : "") + "$" + (Math.abs(c)/100).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const signed = c => (c > 0 ? "+" : "") + money(c);
+const tone = c => c > 0 ? "up" : (c < 0 ? "down" : "flat");
+const plain = c => (Math.abs(c)/100).toFixed(2);
+function parseMoney(str){
+  if (str === undefined || str === null) return null;
+  const s = String(str).replace(/[^0-9.]/g, "");
+  if (s === "" || s === ".") return null;
+  const v = Number(s);
+  return isFinite(v) ? Math.round(v*100) : null;
+}
+const esc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const byName = (a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:"base"});
+
+/*SETTLE-START*/
+/* Split `total` cents across positive integer `weights` in proportion,
+   exact to the cent (largest-remainder method). */
+function allocate(total, weights){
+  const W = weights.reduce((a, b) => a + b, 0);
+  if (W <= 0 || total <= 0) return weights.map(() => 0);
+  const out = weights.map(w => Math.floor((w * total) / W));
+  const rems = weights.map((w, i) => [(w * total) % W, i]);
+  const left = total - out.reduce((a, b) => a + b, 0);
+  rems.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  for (let k = 0; k < left; k++) out[rems[k][1]]++;
+  return out;
+}
+/* list: [{pid, name, buyIn, cashOut}] in cents.
+   Cash-outs over buy-ins  -> winners are trimmed pro rata to what losers lost   (yellow)
+   Cash-outs under buy-ins -> losers are trimmed pro rata to what winners won    (red)
+   Every phone computes the identical answer: rows are ordered by player id. */
+function settle(list){
+  const rows = list.map(e => ({pid: e.pid, name: e.name, buyIn: e.buyIn, cashOut: e.cashOut, net: e.cashOut - e.buyIn}))
+                   .sort((a, b) => (a.pid < b.pid ? -1 : a.pid > b.pid ? 1 : 0));
+  let totalIn = 0, totalOut = 0, won = 0, lost = 0;
+  rows.forEach(r => { totalIn += r.buyIn; totalOut += r.cashOut; if (r.net > 0) won += r.net; else lost -= r.net; r.settled = r.net; });
+  const diff = totalOut - totalIn;
+  const winners = rows.filter(r => r.net > 0), losers = rows.filter(r => r.net < 0);
+  let status = "perfect";
+  if (diff > 0){
+    status = "winnersShort";
+    const a = allocate(lost, winners.map(r => r.net));
+    winners.forEach((r, i) => r.settled = a[i]);
+  } else if (diff < 0){
+    status = "losersOver";
+    const a = allocate(won, losers.map(r => -r.net));
+    losers.forEach((r, i) => r.settled = -a[i]);
   }
-
-  /* ---------- roster storage (degrades to memory) ---------- */
-  var KEY="settleup.roster.v1", memRoster=null;
-  function loadRoster(){
-    try{ var r=window.localStorage.getItem(KEY); if(r) return JSON.parse(r); }catch(e){}
-    return memRoster || [];
+  const cmp = (a, b) => b.amt - a.amt || (a.pid < b.pid ? -1 : a.pid > b.pid ? 1 : 0);
+  const cred = rows.filter(r => r.settled > 0).map(r => ({pid: r.pid, amt: r.settled})).sort(cmp);
+  const deb  = rows.filter(r => r.settled < 0).map(r => ({pid: r.pid, amt: -r.settled})).sort(cmp);
+  const transfers = [];
+  let i = 0, j = 0;
+  while (i < deb.length && j < cred.length){
+    const a = Math.min(deb[i].amt, cred[j].amt);
+    if (a > 0) transfers.push({from: deb[i].pid, to: cred[j].pid, amount: a});
+    deb[i].amt -= a; cred[j].amt -= a;
+    if (deb[i].amt === 0) i++;
+    if (cred[j].amt === 0) j++;
   }
-  function saveRoster(list){
-    memRoster=list;
-    try{ window.localStorage.setItem(KEY, JSON.stringify(list)); }catch(e){}
-  }
-  function rememberPlayers(players){
-    var list=loadRoster();
-    players.forEach(function(p){
-      if(!p.name) return;
-      var hit=null;
-      for(var i=0;i<list.length;i++){ if(list[i].name.toLowerCase()===p.name.toLowerCase()){ hit=list[i]; break; } }
-      if(hit){ if(p.handle) hit.handle=p.handle; }
-      else list.push({name:p.name, handle:p.handle||""});
-    });
-    saveRoster(list.slice(-40));
-    fillDatalist();
-  }
-  function fillDatalist(){
-    var dl=document.getElementById("roster");
-    dl.innerHTML="";
-    loadRoster().forEach(function(r){
-      var o=document.createElement("option"); o.value=r.name; dl.appendChild(o);
-    });
-  }
-  function handleFor(name){
-    var list=loadRoster();
-    for(var i=0;i<list.length;i++){ if(list[i].name.toLowerCase()===name.toLowerCase()) return list[i].handle||""; }
-    return "";
-  }
+  return {status, diff, totalIn, totalOut, rows, transfers};
+}
+/*SETTLE-END*/
 
-  /* ---------- state ---------- */
-  var players=[], nextId=1;
-  var elPlayers=document.getElementById("players");
+/* =====================================================================
+   STORAGE. Both stores expose the same calls.
+   Data shape:
+     groups/{gid}                 {name, createdAt, activeSessionId}
+     groups/{gid}/players/{pid}   {name, createdAt}
+     groups/{gid}/sessions/{sid}  {status:"open"|"finished", createdAt, finishedAt,
+                                   entries:{pid:{buyIn, cashOut, at}}, result}
+   All-time P/L is each finished night's numbers exactly as entered
+   (cash-out minus buy-in), even when the pot was off and payments were
+   trimmed. It is never stored as a running total; it is summed from
+   finished nights, so deleting a bad night fixes everyone's totals.
+   ===================================================================== */
 
-  function addPlayer(name, handle){
-    var p={id:nextId++, name:name||"", buyin:null, cashout:null, handle:handle||"", node:null};
-    players.push(p);
-    elPlayers.appendChild(buildRow(p));
-    return p;
-  }
-
-  function buildRow(p){
-    var el=document.createElement("article");
-    el.className="player";
-    el.innerHTML =
-      '<div class="p-top">'+
-        '<input class="p-name" list="roster" placeholder="Name" autocomplete="off" aria-label="Player name">'+
-        '<button class="p-remove" type="button" aria-label="Remove player">&times;</button>'+
-      '</div>'+
-      '<div class="p-fields">'+
-        '<label class="field"><span class="f-label">Buy-in</span>'+
-          '<div class="f-box"><span class="cur">$</span>'+
-          '<input class="p-buyin" inputmode="decimal" placeholder="10.00" aria-label="Buy-in">'+
-          '<button class="rebuy" type="button" title="Add a $10 rebuy">+10</button></div>'+
-        '</label>'+
-        '<label class="field"><span class="f-label">Cash-out</span>'+
-          '<div class="f-box"><span class="cur">$</span>'+
-          '<input class="p-cashout" inputmode="decimal" placeholder="0.00" aria-label="Cash-out">'+
-          '</div>'+
-        '</label>'+
-      '</div>'+
-      '<div class="p-foot">'+
-        '<span class="p-net">&mdash;</span>'+
-        '<input class="p-handle" placeholder="@venmo or $cashtag" autocomplete="off" aria-label="Payment handle">'+
-      '</div>';
-
-    var name=el.querySelector(".p-name"),
-        buyin=el.querySelector(".p-buyin"),
-        cash=el.querySelector(".p-cashout"),
-        hand=el.querySelector(".p-handle");
-
-    name.value=p.name; hand.value=p.handle;
-    if(p.buyin!==null) buyin.value=plain(p.buyin);
-    if(p.cashout!==null) cash.value=plain(p.cashout);
-
-    name.addEventListener("input", function(){
-      p.name=name.value.trim();
-      var h=handleFor(p.name);
-      if(h && !hand.value){ hand.value=h; p.handle=h; }
-      refresh();
-    });
-    buyin.addEventListener("input", function(){ p.buyin=parseMoney(buyin.value); refresh(); });
-    cash.addEventListener("input", function(){ p.cashout=parseMoney(cash.value); refresh(); });
-    hand.addEventListener("input", function(){ p.handle=hand.value.trim(); });
-
-    el.querySelector(".rebuy").addEventListener("click", function(){
-      p.buyin=(p.buyin||0)+1000;
-      buyin.value=plain(p.buyin);
-      refresh();
-    });
-    el.querySelector(".p-remove").addEventListener("click", function(){
-      players=players.filter(function(x){ return x.id!==p.id; });
-      el.remove();
-      refresh();
-    });
-
-    p.node=el;
-    p.netEl=el.querySelector(".p-net");
-    return el;
-  }
-
-  /* ---------- derived ---------- */
-  function totals(){
-    var tin=0, tout=0, missingCash=0, named=0;
-    players.forEach(function(p){
-      tin += (p.buyin||0);
-      tout += (p.cashout||0);
-      if(p.cashout===null) missingCash++;
-      if(p.name) named++;
-    });
-    return {tin:tin, tout:tout, diff:tout-tin, missingCash:missingCash, named:named};
-  }
-
-  function refresh(){
-    var t=totals();
-    document.getElementById("totalIn").textContent=money(t.tin);
-    document.getElementById("totalOut").textContent=money(t.tout);
-
-    var pct = t.tin>0 ? Math.min(100, (t.tout/t.tin)*100) : 0;
-    var track=document.getElementById("track"), fill=document.getElementById("fill");
-    fill.style.width=pct+"%";
-
-    players.forEach(function(p){
-      if(p.buyin===null && p.cashout===null){ p.netEl.textContent="—"; p.netEl.className="p-net"; return; }
-      var n=(p.cashout||0)-(p.buyin||0);
-      p.netEl.textContent=(n>0?"+":"")+money(n);
-      p.netEl.className="p-net "+(n>0?"up":(n<0?"down":""));
-    });
-
-    var st=document.getElementById("status"), txt=document.getElementById("statusText");
-    var ready=false;
-    track.className="track";
-    st.className="status";
-
-    if(players.length<2 || t.named<2){
-      txt.textContent="Add everyone who played to get started.";
-    } else if(t.missingCash>0){
-      txt.innerHTML = t.missingCash+" player"+(t.missingCash>1?"s":"")+" still need"+(t.missingCash>1?"":"s")+" a cash-out.";
-    } else if(t.diff===0 && t.tin===0){
-      txt.textContent="Enter the buy-ins.";
-    } else if(t.diff===0){
-      st.className="status good"; track.className="track good";
-      txt.innerHTML="Books balance. <b>"+money(t.tin)+"</b> accounted for.";
-      ready=true;
-    } else if(t.diff<0){
-      st.className="status off"; track.className="track off";
-      txt.innerHTML="<b>"+money(-t.diff)+"</b> short. There's less on the table than went into the pot — recount the chips and re-enter.";
-    } else {
-      st.className="status off"; track.className="track off";
-      txt.innerHTML="<b>"+money(t.diff)+"</b> over. There are more chips on the table than money in the pot — recount and re-enter.";
-    }
-
-    document.getElementById("settleBtn").disabled=!ready;
-    if(!ready) document.getElementById("results").classList.add("hidden");
-  }
-
-  /* ---------- settlement ---------- */
-  function computeTx(list){
-    var cred=[], deb=[];
-    list.forEach(function(p){
-      if(p.net>0) cred.push({name:p.name, amt:p.net, handle:p.handle});
-      else if(p.net<0) deb.push({name:p.name, amt:-p.net, handle:p.handle});
-    });
-    cred.sort(function(a,b){ return b.amt-a.amt; });
-    deb.sort(function(a,b){ return b.amt-a.amt; });
-    var tx=[], i=0, j=0;
-    while(i<deb.length && j<cred.length){
-      var a=Math.min(deb[i].amt, cred[j].amt);
-      if(a>0) tx.push({from:deb[i].name, to:cred[j].name, handle:cred[j].handle, amount:a});
-      deb[i].amt-=a; cred[j].amt-=a;
-      if(deb[i].amt===0) i++;
-      if(cred[j].amt===0) j++;
-    }
-    return tx;
-  }
-
-  function payLink(handle, amountCents, payeeName){
-    if(!handle) return null;
-    var amt=plain(amountCents);
-    if(handle.charAt(0)==="$"){
-      return {label:"Cash App", url:"https://cash.app/"+encodeURIComponent(handle)+"/"+amt};
-    }
-    var h=handle.replace(/^@/,"");
-    return {label:"Venmo", url:"https://venmo.com/?txn=pay&audience=private&recipients="+encodeURIComponent(h)+"&amount="+amt+"&note="+encodeURIComponent("Poker night")};
-  }
-
-  function renderPayments(tx, container){
-    container.innerHTML="";
-    if(!tx.length){
-      container.innerHTML='<p class="even">Everybody broke even. Nobody owes anybody.</p>';
-      return;
-    }
-    tx.forEach(function(t){
-      var row=document.createElement("div");
-      row.className="pay";
-      var who=document.createElement("div");
-      who.className="pay-who";
-      who.innerHTML=esc(t.from)+'<span class="arw">&rarr;</span>'+esc(t.to);
-      var amt=document.createElement("div");
-      amt.className="pay-amt"; amt.textContent=money(t.amount);
-      var acts=document.createElement("div");
-      acts.className="pay-acts";
-
-      var link=payLink(t.handle, t.amount, t.to);
-      if(link){
-        var a=document.createElement("a");
-        a.className="chipbtn"; a.href=link.url; a.target="_blank"; a.rel="noopener";
-        a.textContent=link.label;
-        acts.appendChild(a);
+/*FS-START*/
+function makeFirestoreStore(fb, db){
+  const {doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, runTransaction, deleteField} = fb;
+  const gRef = gid => doc(db, "groups", gid);
+  const pCol = gid => collection(db, "groups", gid, "players");
+  const sCol = gid => collection(db, "groups", gid, "sessions");
+  const sRef = (gid, sid) => doc(db, "groups", gid, "sessions", sid);
+  const rows = q => q.docs.map(d => ({id: d.id, ...d.data()}));
+  return {
+    mode: "cloud",
+    watchGroups(cb, onErr){
+      return onSnapshot(collection(db, "groups"), q => cb(rows(q)), onErr);
+    },
+    watchGroup(gid, cb, onErr){
+      let g, ps, ss, a = false, b = false, c = false;
+      const fire = () => { if (a && b && c) cb({group: g, players: ps, sessions: ss}); };
+      const u1 = onSnapshot(gRef(gid), d => { g = d.exists() ? {id: d.id, ...d.data()} : null; a = true; fire(); }, onErr);
+      const u2 = onSnapshot(pCol(gid), q => { ps = rows(q); b = true; fire(); }, onErr);
+      const u3 = onSnapshot(sCol(gid), q => { ss = rows(q); c = true; fire(); }, onErr);
+      return () => { u1(); u2(); u3(); };
+    },
+    async createGroup(name){
+      const base = slugify(name);
+      for (let n = 1; n < 60; n++){
+        const id = n === 1 ? base : base + "-" + n;
+        const made = await runTransaction(db, async tx => {
+          const s = await tx.get(gRef(id));
+          if (s.exists()) return false;
+          tx.set(gRef(id), {name, createdAt: Date.now(), activeSessionId: null});
+          return true;
+        });
+        if (made) return id;
       }
-      var c=document.createElement("button");
-      c.type="button"; c.className="chipbtn copy"; c.textContent="Copy";
-      c.addEventListener("click", function(){
-        copy(t.from+" pays "+t.to+" "+money(t.amount), c, "Copied");
+      throw new Error("Couldn't create that group.");
+    },
+    async addPlayer(gid, name){
+      const id = uid();
+      await setDoc(doc(pCol(gid), id), {name, createdAt: Date.now()});
+      return id;
+    },
+    async saveEntry(gid, pid, entry){
+      const sid = await runTransaction(db, async tx => {
+        const g = await tx.get(gRef(gid));
+        if (!g.exists()) throw new Error("This group doesn't exist anymore.");
+        const cur = g.data().activeSessionId;
+        if (cur) return cur;
+        const nid = uid();
+        tx.set(sRef(gid, nid), {status: "open", createdAt: Date.now(), entries: {}});
+        tx.update(gRef(gid), {activeSessionId: nid});
+        return nid;
       });
-      acts.appendChild(c);
+      await updateDoc(sRef(gid, sid), {["entries." + pid]: entry});
+      return sid;
+    },
+    async removeEntry(gid, sid, pid){
+      await updateDoc(sRef(gid, sid), {["entries." + pid]: deleteField()});
+    },
+    async clearCashOuts(gid, sid, pids){
+      if (!pids.length) return;
+      const patch = {};
+      pids.forEach(p => { patch["entries." + p + ".cashOut"] = null; });
+      await updateDoc(sRef(gid, sid), patch);
+    },
+    finishSession(gid, sid, result){
+      return runTransaction(db, async tx => {
+        const g = await tx.get(gRef(gid));
+        const s = await tx.get(sRef(gid, sid));
+        if (!s.exists() || s.data().status !== "open") return false;
+        tx.update(sRef(gid, sid), {status: "finished", finishedAt: Date.now(), result});
+        if (g.exists() && g.data().activeSessionId === sid) tx.update(gRef(gid), {activeSessionId: null});
+        return true;
+      });
+    },
+    async deleteSession(gid, sid){
+      await deleteDoc(sRef(gid, sid));
+    }
+  };
+}
+/*FS-END*/
 
-      row.appendChild(who); row.appendChild(amt); row.appendChild(acts);
-      container.appendChild(row);
-    });
-  }
+function makeLocalStore(){
+  const KEY = "settleup.demo.v2";
+  let mem = null;
+  const read = () => {
+    try { const r = localStorage.getItem(KEY); if (r) return JSON.parse(r); } catch (e) {}
+    return mem || {groups: {}};
+  };
+  let data = read();
+  const subs = new Set();
+  const emit = () => subs.forEach(fn => { try { fn(); } catch (e) { console.error(e); } });
+  const commit = () => {
+    mem = data;
+    try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+    setTimeout(emit, 0);
+  };
+  window.addEventListener("storage", e => { if (e.key === KEY){ data = read(); emit(); } });
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const G = gid => { const g = data.groups[gid]; if (!g) throw new Error("This group doesn't exist anymore."); return g; };
+  return {
+    mode: "demo",
+    watchGroups(cb){
+      const fn = () => cb(Object.entries(data.groups).map(([id, g]) => ({id, name: g.name, createdAt: g.createdAt})));
+      subs.add(fn); setTimeout(fn, 0);
+      return () => subs.delete(fn);
+    },
+    watchGroup(gid, cb){
+      const fn = () => {
+        const g = data.groups[gid];
+        if (!g) return cb({group: null, players: [], sessions: []});
+        cb(clone({
+          group: {id: gid, name: g.name, activeSessionId: g.activeSessionId || null},
+          players: Object.entries(g.players || {}).map(([id, p]) => ({id, ...p})),
+          sessions: Object.entries(g.sessions || {}).map(([id, s]) => ({id, ...s}))
+        }));
+      };
+      subs.add(fn); setTimeout(fn, 0);
+      return () => subs.delete(fn);
+    },
+    async createGroup(name){
+      data = read();
+      const base = slugify(name);
+      let id = base, n = 1;
+      while (data.groups[id]) id = base + "-" + (++n);
+      data.groups[id] = {name, createdAt: Date.now(), activeSessionId: null, players: {}, sessions: {}};
+      commit(); return id;
+    },
+    async addPlayer(gid, name){
+      data = read();
+      const id = uid();
+      G(gid).players[id] = {name, createdAt: Date.now()};
+      commit(); return id;
+    },
+    async saveEntry(gid, pid, entry){
+      data = read();
+      const g = G(gid);
+      let sid = g.activeSessionId;
+      if (!sid || !g.sessions[sid] || g.sessions[sid].status !== "open"){
+        sid = uid();
+        g.sessions[sid] = {status: "open", createdAt: Date.now(), entries: {}};
+        g.activeSessionId = sid;
+      }
+      g.sessions[sid].entries[pid] = entry;
+      commit(); return sid;
+    },
+    async removeEntry(gid, sid, pid){
+      data = read();
+      const s = G(gid).sessions[sid];
+      if (s && s.entries) delete s.entries[pid];
+      commit();
+    },
+    async clearCashOuts(gid, sid, pids){
+      data = read();
+      const s = G(gid).sessions[sid];
+      if (s) pids.forEach(p => { if (s.entries[p]) s.entries[p].cashOut = null; });
+      commit();
+    },
+    async finishSession(gid, sid, result){
+      data = read();
+      const g = G(gid), s = g.sessions[sid];
+      if (!s || s.status !== "open") return false;
+      s.status = "finished"; s.finishedAt = Date.now(); s.result = result;
+      if (g.activeSessionId === sid) g.activeSessionId = null;
+      commit(); return true;
+    },
+    async deleteSession(gid, sid){
+      data = read();
+      delete G(gid).sessions[sid];
+      commit();
+    }
+  };
+}
 
-  function esc(s){ return String(s).replace(/[&<>"]/g, function(m){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]; }); }
+async function initStore(){
+  if (!FIREBASE_CONFIG) return makeLocalStore();
+  const base = "https://www.gstatic.com/firebasejs/" + FIREBASE_SDK + "/";
+  const appMod = await import(base + "firebase-app.js");
+  const fsMod = await import(base + "firebase-firestore.js");
+  const app = appMod.initializeApp(FIREBASE_CONFIG);
+  return makeFirestoreStore(fsMod, fsMod.getFirestore(app));
+}
 
-  function copy(text, btn, done){
-    var old=btn.textContent;
-    function ok(){ btn.textContent=done; setTimeout(function(){ btn.textContent=old; }, 1400); }
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(ok, function(){ fallback(text, ok); });
-    } else fallback(text, ok);
-  }
-  function fallback(text, ok){
-    var ta=document.createElement("textarea");
-    ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+/* =====================================================================
+   APP
+   ===================================================================== */
+const $ = (sel, root = document) => root.querySelector(sel);
+const view = $("#view");
+const S = {
+  store: null, err: null,
+  lockedGid: null,
+  groups: null, unsubHome: null,
+  gid: null, unsubGroup: null, loaded: false,
+  group: null, players: [], sessions: []
+};
+let screen = null;
+
+/* ---- per-device "who am I" ---- */
+const memMe = {};
+function getMe(gid){ try { return localStorage.getItem("settleup.me." + gid) || memMe[gid] || null; } catch (e) { return memMe[gid] || null; } }
+function setMe(gid, pid){ memMe[gid] = pid; try { localStorage.setItem("settleup.me." + gid, pid); } catch (e) {} }
+
+/* ---- chrome ---- */
+function setHeader({crumb, href, title, act}){
+  const c = $("#crumb");
+  c.textContent = crumb;
+  if (href){ c.setAttribute("href", href); } else { c.removeAttribute("href"); }
+  $("#title").textContent = title;
+  $("#headAct").innerHTML = act || "";
+  document.title = title === "Settle Up" ? "Settle Up" : title + " · Settle Up";
+}
+function setBar(html){
+  const bar = $("#bar");
+  if (!html){ bar.classList.add("hidden"); $("#barInner").innerHTML = ""; return; }
+  $("#barInner").innerHTML = html;
+  bar.classList.remove("hidden");
+}
+let toastTimer = null;
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+function renderBanner(){
+  const b = $("#banner");
+  if (S.err){
+    b.innerHTML = '<div class="banner err"><b>Can\'t reach the database.</b> ' + esc(S.err) + '</div>';
+  } else if (S.store && S.store.mode === "demo"){
+    b.innerHTML = '<div class="banner"><b>Demo mode.</b> Everything is saved on this device only, so other phones won\'t see it yet. Add the Firebase config to share across phones.</div>';
+  } else b.innerHTML = "";
+}
+function onDbError(e){
+  console.error(e);
+  S.err = (e && e.code === "permission-denied")
+    ? "Firestore refused access. Check that the security rules from the setup steps are published."
+    : ((e && e.message) || String(e));
+  renderBanner();
+}
+async function run(fn){
+  try { return await fn(); }
+  catch (e){ console.error(e); toast((e && e.message) || "Something went wrong."); return undefined; }
+}
+function copyText(text){
+  const ok = () => toast("Link copied");
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(ok, () => fallback());
+  } else fallback();
+  function fallback(){
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
     document.body.appendChild(ta); ta.select();
-    try{ document.execCommand("copy"); ok(); }catch(e){ window.prompt("Copy this:", text); }
+    try { document.execCommand("copy"); ok(); } catch (e) { window.prompt("Copy this link:", text); }
     ta.remove();
   }
+}
+function groupLink(gid){ return location.origin + location.pathname + "?g=" + encodeURIComponent(gid); }
+function fmtDate(ms){
+  const d = new Date(ms), now = new Date();
+  const opts = {weekday: "short", month: "short", day: "numeric"};
+  if (d.getFullYear() !== now.getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString(undefined, opts);
+}
+function fmtTime(ms){ return new Date(ms).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"}); }
 
-  /* ---------- share link ---------- */
-  function encode(obj){
-    var s=JSON.stringify(obj);
-    var b=btoa(unescape(encodeURIComponent(s)));
-    return b.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  }
-  function decode(str){
-    var b=str.replace(/-/g,"+").replace(/_/g,"/");
-    while(b.length%4) b+="=";
-    return JSON.parse(decodeURIComponent(escape(atob(b))));
-  }
-
-  var lastTx=[];
-
-  document.getElementById("settleBtn").addEventListener("click", function(){
-    var list=players.filter(function(p){ return p.name; }).map(function(p){
-      return {name:p.name, net:(p.cashout||0)-(p.buyin||0), handle:p.handle};
+/* ---- derived group data ---- */
+function derive(){
+  const pmap = {};
+  S.players.forEach(p => { pmap[p.id] = p; });
+  const active = S.group && S.group.activeSessionId
+    ? S.sessions.find(s => s.id === S.group.activeSessionId && s.status === "open") || null : null;
+  const finished = S.sessions.filter(s => s.status === "finished" && s.result)
+                             .sort((a, b) => (b.finishedAt || 0) - (a.finishedAt || 0));
+  const life = {};
+  finished.forEach(s => {
+    Object.entries(s.result.players || {}).forEach(([pid, r]) => {
+      const L = life[pid] || (life[pid] = {pl: 0, nights: 0});
+      L.pl += r.net; L.nights++;
     });
-    lastTx=computeTx(list);
-    rememberPlayers(list);
-    renderPayments(lastTx, document.getElementById("payList"));
-    var r=document.getElementById("results");
-    r.classList.remove("hidden");
-    r.scrollIntoView({behavior:"smooth", block:"start"});
   });
+  const entries = active
+    ? Object.entries(active.entries || {})
+        .filter(([, e]) => e && typeof e.buyIn === "number")
+        .map(([pid, e]) => ({pid, name: (pmap[pid] || {}).name || "Unknown", buyIn: e.buyIn,
+                             cashOut: typeof e.cashOut === "number" ? e.cashOut : null}))
+        .sort(byName)
+    : [];
+  return {pmap, active, finished, life, entries};
+}
+function recordedToResult(s){
+  const r = s.result;
+  const rows = Object.entries(r.players || {}).map(([pid, p]) => ({pid, ...p}));
+  return {status: r.status, diff: r.diff, totalIn: r.totalIn, totalOut: r.totalOut, rows, transfers: r.transfers || []};
+}
+const nightsLabel = n => n === 0 ? "No nights yet" : (n === 1 ? "1 night" : n + " nights");
 
-  document.getElementById("shareBtn").addEventListener("click", function(){
-    var payload=lastTx.map(function(t){ return [t.from, t.to, t.amount, t.handle||""]; });
-    var url=location.origin+location.pathname+"#r="+encode(payload);
-    copy(url, this, "Link copied");
-  });
-
-  /* ---------- new game ---------- */
-  document.getElementById("newGame").addEventListener("click", function(){
-    if(players.length && !window.confirm("Clear the numbers and start a new game? Names stay.")) return;
-    var keep=players.filter(function(p){ return p.name; }).map(function(p){ return {name:p.name, handle:p.handle}; });
-    elPlayers.innerHTML=""; players=[]; lastTx=[];
-    document.getElementById("results").classList.add("hidden");
-    if(keep.length) keep.forEach(function(k){ addPlayer(k.name, k.handle); });
-    else { addPlayer(); addPlayer(); }
-    refresh();
-    window.scrollTo({top:0, behavior:"smooth"});
-  });
-
-  document.getElementById("addPlayer").addEventListener("click", function(){
-    var p=addPlayer();
-    p.node.querySelector(".p-name").focus();
-    refresh();
-  });
-
-  /* ---------- shared results view ---------- */
-  function showShared(payload){
-    document.getElementById("calc").classList.add("hidden");
-    document.getElementById("bar").classList.add("hidden");
-    document.getElementById("shared").classList.remove("hidden");
-    document.getElementById("eyebrow").textContent="Tonight's payouts";
-    var tx=payload.map(function(a){ return {from:a[0], to:a[1], amount:a[2], handle:a[3]}; });
-    renderPayments(tx, document.getElementById("sharedList"));
+/* ---- verdict + payouts (shared by live table and recorded nights) ---- */
+const VERDICT = {
+  perfect:      {cls: "green",  head: "Payouts are perfect"},
+  winnersShort: {cls: "yellow", head: "Winners are receiving less profit"},
+  losersOver:   {cls: "red",    head: "Losers owe more than they should"}
+};
+function verdictHTML(res){
+  const v = VERDICT[res.status];
+  let detail;
+  if (res.status === "perfect"){
+    detail = "Buy-ins and cash-outs match to the penny: <b>" + money(res.totalIn) + "</b>.";
+  } else if (res.status === "winnersShort"){
+    detail = "Cash-outs are <b>" + money(res.diff) + "</b> more than the buy-ins. Winners are paid out of what the losers actually lost, split in proportion to each winner's profit. All-time numbers still log what each person entered.";
+  } else {
+    detail = "Cash-outs are <b>" + money(-res.diff) + "</b> less than the buy-ins. Losers only pay what the winners actually won, split in proportion to each loser's loss. All-time numbers still log what each person entered.";
   }
-  document.getElementById("openCalc").addEventListener("click", function(){
-    location.hash="";
-    location.reload();
-  });
-
-  /* ---------- boot ---------- */
-  fillDatalist();
-  var h=location.hash;
-  if(h.indexOf("#r=")===0){
-    try{ showShared(decode(h.slice(3))); }
-    catch(e){ location.hash=""; startCalc(); }
-  } else startCalc();
-
-  function startCalc(){
-    var roster=loadRoster();
-    if(roster.length>=2) roster.slice(-6).forEach(function(r){ addPlayer(r.name, r.handle); });
-    else { addPlayer(); addPlayer(); }
-    refresh();
+  return '<section class="verdict ' + v.cls + '"><h3>' + v.head + '</h3><p>' + detail + '</p></section>';
+}
+function payoutsHTML(res, names, forPid, selectId){
+  const rows = res.rows.slice().sort(byName);
+  let html = "";
+  if (selectId){
+    const opts = ['<option value="">Pick your name</option>']
+      .concat(rows.map(r => '<option value="' + esc(r.pid) + '"' + (r.pid === forPid ? " selected" : "") + '>' + esc(r.name) + '</option>'))
+      .join("");
+    html += '<section class="card youcard"><div class="you-head"><span class="f-label">Showing for</span><select id="' + selectId + '" aria-label="Whose payouts to show">' + opts + '</select></div>';
+    const me = rows.find(r => r.pid === forPid);
+    if (me){
+      const mine = res.transfers.filter(t => t.from === forPid || t.to === forPid);
+      if (!mine.length) html += '<div class="yline"><span>You\'re square tonight. Nobody owes you and you owe nobody.</span></div>';
+      mine.forEach(t => {
+        html += t.from === forPid
+          ? '<div class="yline owe"><span>You pay <b>' + esc(names(t.to)) + '</b></span><span class="mono">' + money(t.amount) + '</span></div>'
+          : '<div class="yline get"><span><b>' + esc(names(t.from)) + '</b> pays you</span><span class="mono">' + money(t.amount) + '</span></div>';
+      });
+      html += '<div class="ysum">Logged for you tonight: <b class="mono ' + tone(me.net) + '">' + signed(me.net) + '</b>.'
+            + (me.settled !== me.net ? ' Your payment above is ' + money(Math.abs(me.net - me.settled)) + ' different because the pot is off.' : '') + '</div>';
+    } else {
+      html += '<div class="yline"><span class="flat">Pick your name to see what you owe or are owed.</span></div>';
+    }
+    html += '</section>';
   }
+  html += '<div class="sec-head"><h2>Who pays who</h2></div>';
+  if (!res.transfers.length){
+    html += '<p class="even">Everybody broke even. Nobody owes anybody.</p>';
+  } else {
+    html += '<div>' + res.transfers.map(t =>
+      '<div class="pay"><div class="pay-who">' + esc(names(t.from)) + '<span class="arw">&rarr;</span>' + esc(names(t.to)) +
+      '</div><div class="pay-amt">' + money(t.amount) + '</div></div>').join("") + '</div>';
+  }
+  return html;
+}
+
+/* =====================================================================
+   SCREENS. Each returns {update()}; update runs on every data change
+   and skips work when nothing it shows has changed.
+   ===================================================================== */
+function HomeScreen(){
+  setHeader({crumb: "Poker night", href: null, title: "Settle Up"});
+  setBar(null);
+  view.innerHTML =
+    '<div class="sec-head"><h2>Groups</h2></div>' +
+    '<div id="groupList" class="list"><p class="loading">Loading…</p></div>' +
+    '<button class="add" id="ngBtn" type="button">+ New group</button>' +
+    '<form id="ngForm" class="addrow hidden" autocomplete="off"><input id="ngName" maxlength="30" placeholder="Group name, like P" aria-label="Group name"><button class="pill" type="submit">Create</button></form>';
+  $("#ngBtn").onclick = () => { $("#ngBtn").classList.add("hidden"); $("#ngForm").classList.remove("hidden"); $("#ngName").focus(); };
+  $("#ngForm").onsubmit = async e => {
+    e.preventDefault();
+    const name = $("#ngName").value.trim();
+    if (!name) return;
+    const id = await run(() => S.store.createGroup(name));
+    if (id) location.hash = "#/" + encodeURIComponent(id);
+  };
+  let key = "";
+  return {
+    update(){
+      if (!S.groups) return;
+      const list = S.groups.slice().sort(byName);
+      const k = JSON.stringify(list);
+      if (k === key) return; key = k;
+      $("#groupList").innerHTML = list.length
+        ? list.map(g => '<a class="prow" href="#/' + encodeURIComponent(g.id) + '"><div class="p-main"><div class="p-name">' + esc(g.name) + '</div></div><span class="chev">&rsaquo;</span></a>').join("")
+        : '<p class="hint">No groups yet. Make one for your game, then send everyone its link.</p>';
+    }
+  };
+}
+
+function GroupScreen(gid){
+  let built = false, key = "";
+  const build = () => {
+    built = true;
+    setHeader({
+      crumb: S.lockedGid ? "Poker night" : "‹ All groups", href: S.lockedGid ? null : "#/",
+      title: S.group.name,
+      act: '<a class="ghost" href="#/' + encodeURIComponent(gid) + '/history">History</a>'
+    });
+    setBar(null);
+    view.innerHTML =
+      '<section class="card" id="tonight"></section>' +
+      '<div class="sec-head"><h2>Who are you?</h2><span class="sub">All-time P/L</span></div>' +
+      '<div class="list" id="plist"></div>' +
+      '<button class="add" id="npBtn" type="button">+ New player</button>' +
+      '<form id="npForm" class="addrow hidden" autocomplete="off"><input id="npName" maxlength="24" placeholder="Your name" aria-label="New player name"><button class="pill" type="submit">Add</button></form>' +
+      '<div class="foot-acts"><button class="ghost" id="shareBtn" type="button">Copy link for the group chat</button></div>';
+    $("#npBtn").onclick = () => { $("#npBtn").classList.add("hidden"); $("#npForm").classList.remove("hidden"); $("#npName").focus(); };
+    $("#npForm").onsubmit = async e => {
+      e.preventDefault();
+      const name = $("#npName").value.trim().replace(/\s+/g, " ");
+      if (!name) return;
+      const dup = S.players.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (dup){ toast(dup.name + " is already on the list"); location.hash = "#/" + encodeURIComponent(gid) + "/p/" + dup.id; return; }
+      const pid = await run(() => S.store.addPlayer(gid, name));
+      if (pid) location.hash = "#/" + encodeURIComponent(gid) + "/p/" + pid;
+    };
+    $("#shareBtn").onclick = () => copyText(groupLink(gid));
+  };
+  return {
+    update(){
+      if (!S.loaded) return;
+      if (!S.group){ view.innerHTML = missingGroupHTML(gid); setBar(null); return; }
+      if (!built) build();
+      const d = derive(), me = getMe(gid);
+      const k = JSON.stringify([S.group.name, S.players, d.entries, d.life, me]);
+      if (k === key) return; key = k;
+      $("#title").textContent = S.group.name;
+
+      const t = $("#tonight");
+      if (d.active && d.entries.length){
+        const pot = d.entries.reduce((a, e) => a + e.buyIn, 0);
+        const waiting = d.entries.filter(e => e.cashOut === null).length;
+        t.innerHTML = '<h3>Game on</h3><p>' + d.entries.length + ' bought in · ' + money(pot) + ' in the pot · ' +
+          (waiting ? waiting + ' still playing' : 'everyone has cashed out') + '</p>' +
+          '<a class="ghost" href="#/' + encodeURIComponent(gid) + '/table">Open tonight\'s table &rsaquo;</a>';
+      } else {
+        t.innerHTML = '<h3>No game running</h3><p>Tap your name below to buy in. The first person in starts tonight\'s game.</p>';
+      }
+
+      const inTonight = {};
+      d.entries.forEach(e => { inTonight[e.pid] = e; });
+      const players = S.players.slice().sort(byName);
+      $("#plist").innerHTML = players.length ? players.map(p => {
+        const L = d.life[p.id] || {pl: 0, nights: 0};
+        const e = inTonight[p.id];
+        return '<a class="prow' + (p.id === me ? ' me' : '') + '" href="#/' + encodeURIComponent(gid) + '/p/' + p.id + '">' +
+          '<div class="p-main"><div class="p-name">' + esc(p.name) +
+            (e ? '<span class="tag">In · ' + money(e.buyIn) + '</span>' : '') +
+            (p.id === me ? '<span class="tag you">You</span>' : '') + '</div>' +
+          '<div class="p-sub">' + nightsLabel(L.nights) + '</div></div>' +
+          '<div class="p-pl ' + tone(L.pl) + '">' + signed(L.pl) + '</div></a>';
+      }).join("") : '<p class="hint">Nobody here yet. Tap New player to add yourself.</p>';
+    }
+  };
+}
+
+function EntryScreen(gid, pid){
+  let built = false, filled = false, lifeKey = "";
+  const gHash = "#/" + encodeURIComponent(gid);
+  const build = (player) => {
+    built = true;
+    setHeader({crumb: "‹ " + S.group.name, href: gHash, title: player.name});
+    view.innerHTML =
+      '<p class="lifeline" id="life"></p>' +
+      '<section class="card">' +
+        '<label class="field"><span class="f-label">Buy-in · total, including rebuys</span>' +
+          '<div class="f-box"><span class="cur">$</span><input id="buy" inputmode="decimal" placeholder="0.00" aria-label="Buy-in"></div>' +
+          '<div class="rebuys"><button class="rebuy" type="button" data-add="500">+5</button><button class="rebuy" type="button" data-add="1000">+10</button><button class="rebuy" type="button" data-add="2000">+20</button></div>' +
+        '</label>' +
+        '<label class="field"><span class="f-label">Cash-out</span>' +
+          '<div class="f-box"><span class="cur">$</span><input id="cash" inputmode="decimal" placeholder="Still playing" aria-label="Cash-out"></div>' +
+        '</label>' +
+        '<p class="hint">Cash-out is <strong>everything in front of you</strong> at the end, all your chips, not your winnings. Leave it blank while you\'re still playing.</p>' +
+        '<div class="netline"><span class="f-label">Tonight</span><span class="mono flat" id="net">—</span></div>' +
+      '</section>' +
+      '<p class="errmsg" id="msg"></p>' +
+      '<div class="foot-acts"><button class="ghost danger hidden" id="leave" type="button">Remove ' + esc(player.name) + ' from tonight</button></div>';
+    setBar('<div class="bar-row"><button class="primary" id="save" type="button">Save</button></div>');
+
+    const buy = $("#buy"), cash = $("#cash");
+    const showNet = () => {
+      const b = parseMoney(buy.value), c = parseMoney(cash.value);
+      const n = $("#net");
+      if (b === null || c === null){ n.textContent = "—"; n.className = "mono flat"; return; }
+      n.textContent = signed(c - b); n.className = "mono " + tone(c - b);
+    };
+    buy.oninput = showNet; cash.oninput = showNet;
+    view.querySelectorAll(".rebuy").forEach(btn => btn.onclick = () => {
+      buy.value = plain((parseMoney(buy.value) || 0) + Number(btn.dataset.add)); showNet();
+    });
+    $("#save").onclick = async () => {
+      const b = parseMoney(buy.value), c = parseMoney(cash.value);
+      if (b === null || b <= 0){ $("#msg").textContent = "Enter how much you bought in for."; buy.focus(); return; }
+      $("#msg").textContent = "";
+      $("#save").disabled = true;
+      const ok = await run(() => S.store.saveEntry(gid, pid, {buyIn: b, cashOut: c, at: Date.now()}));
+      $("#save") && ($("#save").disabled = false);
+      if (ok){ setMe(gid, pid); location.hash = gHash + "/table"; }
+    };
+    $("#leave").onclick = async () => {
+      const d = derive();
+      if (!d.active) return;
+      if (!confirm("Take " + player.name + " out of tonight's game?")) return;
+      await run(() => S.store.removeEntry(gid, d.active.id, pid));
+      location.hash = gHash;
+    };
+    buy.addEventListener("keydown", e => { if (e.key === "Enter") cash.focus(); });
+    cash.addEventListener("keydown", e => { if (e.key === "Enter") $("#save").click(); });
+    window._showNet = showNet;
+  };
+  return {
+    update(){
+      if (!S.loaded) return;
+      if (!S.group){ view.innerHTML = missingGroupHTML(gid); setBar(null); return; }
+      const player = S.players.find(p => p.id === pid);
+      if (!player){
+        setHeader({crumb: "‹ " + S.group.name, href: gHash, title: "Not found"});
+        view.innerHTML = '<p class="hint">That player isn\'t in this group.</p>'; setBar(null); return;
+      }
+      if (!built) build(player);
+      const d = derive();
+      const L = d.life[pid] || {pl: 0, nights: 0};
+      const e = d.entries.find(x => x.pid === pid);
+      const k = JSON.stringify([L, !!e]);
+      if (k !== lifeKey){
+        lifeKey = k;
+        $("#life").innerHTML = L.nights
+          ? 'All-time: <b class="' + tone(L.pl) + '">' + signed(L.pl) + '</b> over ' + nightsLabel(L.nights)
+          : 'First night. Good luck.';
+        $("#leave").classList.toggle("hidden", !e);
+      }
+      if (!filled){
+        filled = true;
+        if (e){
+          $("#buy").value = plain(e.buyIn);
+          if (e.cashOut !== null) $("#cash").value = plain(e.cashOut);
+          window._showNet();
+        } else {
+          setTimeout(() => { const b = $("#buy"); if (b && !b.value) b.focus(); }, 50);
+        }
+      }
+    }
+  };
+}
+
+function TableScreen(gid){
+  let key = "", headerSet = false;
+  const gHash = "#/" + encodeURIComponent(gid);
+  return {
+    update(){
+      if (!S.loaded) return;
+      if (!S.group){ view.innerHTML = missingGroupHTML(gid); setBar(null); return; }
+      if (!headerSet){ headerSet = true; setHeader({crumb: "‹ " + S.group.name, href: gHash, title: "Tonight"}); }
+      const d = derive();
+      const me = getMe(gid);
+      const k = JSON.stringify([d.active && d.active.id, d.entries, me, d.finished[0] && d.finished[0].id, S.players]);
+      if (k === key) return; key = k;
+      const names = pid => (d.pmap[pid] || {}).name || "Unknown";
+
+      /* no game running: show the last recorded night so everyone still sees who owes who */
+      if (!d.active){
+        const last = d.finished[0];
+        let html = '<section class="card"><h3>No game running</h3><p>Tap your name on the group page to buy in and start one.</p>' +
+                   '<a class="ghost" href="' + gHash + '">Pick your name &rsaquo;</a></section>';
+        if (last){
+          const res = recordedToResult(last);
+          const nm = pid => ((last.result.players || {})[pid] || {}).name || names(pid);
+          html += '<div class="sec-head"><h2>Last game · ' + fmtDate(last.finishedAt) + ', ' + fmtTime(last.finishedAt) + '</h2><span class="sub">Recorded</span></div>' +
+                  verdictHTML(res) + payoutsHTML(res, nm, me, "forSel");
+        }
+        view.innerHTML = html;
+        bindFor();
+        setBar(null);
+        return;
+      }
+
+      const ents = d.entries;
+      const tin = ents.reduce((a, e) => a + e.buyIn, 0);
+      const tout = ents.reduce((a, e) => a + (e.cashOut || 0), 0);
+      const waiting = ents.filter(e => e.cashOut === null);
+      const ready = ents.length >= 2 && !waiting.length;
+      const res = ready ? settle(ents) : null;
+      const settledBy = {};
+      if (res) res.rows.forEach(r => { settledBy[r.pid] = r; });
+      const cls = res ? VERDICT[res.status].cls : "";
+      const pct = tin > 0 ? Math.min(100, (tout / tin) * 100) : 0;
+
+      let note;
+      if (!ents.length) note = "Nobody has bought in yet.";
+      else if (ents.length < 2) note = "Waiting for at least one more player.";
+      else if (waiting.length) note = "Waiting on " + waiting.length + " cash-out" + (waiting.length > 1 ? "s" : "") + ": " + waiting.map(w => esc(w.name)).join(", ") + ".";
+      else note = "Everyone's in. Results below.";
+
+      let html =
+        '<section class="card"><div class="ledger-figs">' +
+          '<div class="fig"><span class="k">In the pot</span><span class="v">' + money(tin) + '</span></div>' +
+          '<div class="fig right"><span class="k">Cashed out</span><span class="v">' + money(tout) + '</span></div></div>' +
+          '<div class="track ' + cls + '"><div class="fill" style="width:' + pct + '%"></div></div>' +
+          '<p class="ledger-note">' + note + '</p></section>' +
+        '<div class="sec-head"><h2>At the table</h2><span class="sub">Tap a name to edit</span></div><div>';
+      html += ents.map(e => {
+        const r = settledBy[e.pid];
+        const net = e.cashOut === null ? null : e.cashOut - e.buyIn;
+        return '<a class="trow" href="' + gHash + '/p/' + e.pid + '"><div class="p-main"><div class="p-name">' + esc(e.name) +
+          (e.pid === me ? '<span class="tag you">You</span>' : '') + '</div>' +
+          '<div class="tsub"><small>In</small>' + money(e.buyIn) + '<span class="sep">·</span><small>Out</small>' +
+            (e.cashOut === null ? '<span class="playing">playing</span>' : money(e.cashOut)) + '</div></div>' +
+          '<div class="tnet mono ' + (net === null ? "flat" : tone(net)) + '">' + (net === null ? "—" : signed(net)) +
+            (r && r.settled !== r.net ? '<span class="settles">' + (r.settled >= 0 ? "gets " : "pays ") + money(Math.abs(r.settled)) + '</span>' : '') + '</div></a>';
+      }).join("");
+      html += '</div>';
+      if (res) html += verdictHTML(res) + payoutsHTML(res, names, me, "forSel");
+      view.innerHTML = html;
+      bindFor();
+
+      if (res){
+        setBar('<div class="bar-row"><button class="secondary" id="recalc" type="button">Recalculate</button><button class="primary" id="finish" type="button">Finish</button></div>');
+        $("#recalc").onclick = async () => {
+          if (!confirm("Clear everyone's cash-out so you can recount? Buy-ins stay, and everyone re-enters their cash-out.")) return;
+          await run(() => S.store.clearCashOuts(gid, d.active.id, ents.map(e => e.pid)));
+          toast("Cash-outs cleared. Recount and re-enter.");
+        };
+        $("#finish").onclick = async () => {
+          const fresh = derive();
+          if (!fresh.active || fresh.active.id !== d.active.id){ toast("Someone already finished tonight."); return; }
+          const r2 = settle(fresh.entries);
+          const gap = Math.abs(r2.diff);
+          const ask = gap >= 100
+            ? "Pot is off by " + money(gap) + ". Finish anyway?\n\nEveryone's numbers get logged exactly as entered, so a big gap stays in the all-time totals unless you delete the night in History."
+            : "Record tonight? These results get added to everyone's all-time numbers.";
+          if (!confirm(ask)) return;
+          const players = {};
+          r2.rows.forEach(r => { players[r.pid] = {name: r.name, buyIn: r.buyIn, cashOut: r.cashOut, net: r.net, settled: r.settled}; });
+          const result = {status: r2.status, diff: r2.diff, totalIn: r2.totalIn, totalOut: r2.totalOut, players, transfers: r2.transfers};
+          $("#finish").disabled = true;
+          const ok = await run(() => S.store.finishSession(gid, fresh.active.id, result));
+          if (ok === false) toast("Someone already finished tonight.");
+          else if (ok){ toast("Recorded. All-time numbers updated."); location.hash = gHash; }
+          else if ($("#finish")) $("#finish").disabled = false;
+        };
+      } else {
+        const meIn = me && ents.find(e => e.pid === me);
+        setBar('<div class="bar-row"><a class="primary" href="' + gHash + (meIn ? "/p/" + me : "") + '">' + (meIn ? "Edit my numbers" : "Add my numbers") + '</a></div>');
+      }
+    }
+  };
+  function bindFor(){
+    const sel = $("#forSel");
+    if (sel) sel.onchange = () => { if (sel.value) setMe(gid, sel.value); key = ""; screen.update(); };
+  }
+}
+
+function HistoryScreen(gid){
+  let key = "", headerSet = false;
+  const gHash = "#/" + encodeURIComponent(gid);
+  const open = new Set();
+  return {
+    update(){
+      if (!S.loaded) return;
+      if (!S.group){ view.innerHTML = missingGroupHTML(gid); setBar(null); return; }
+      if (!headerSet){ headerSet = true; setHeader({crumb: "‹ " + S.group.name, href: gHash, title: "History"}); setBar(null); }
+      const d = derive();
+      const k = JSON.stringify(d.finished.map(s => [s.id, s.finishedAt]));
+      if (k === key) return; key = k;
+      if (!d.finished.length){ view.innerHTML = '<p class="hint">No finished nights yet. Hit Finish at the end of a game to record it here.</p>'; return; }
+      view.innerHTML = '<p class="hint" style="margin:0 2px 12px">All-time numbers are added up from these nights. Delete a night and everyone\'s totals update.</p>' +
+        d.finished.map(s => {
+          const res = recordedToResult(s);
+          const nm = pid => ((s.result.players || {})[pid] || {}).name || "Unknown";
+          const rows = res.rows.slice().sort((a, b) => b.net - a.net);
+          return '<details class="night" data-sid="' + s.id + '"' + (open.has(s.id) ? " open" : "") + '><summary>' +
+            '<span class="dot ' + VERDICT[res.status].cls + '"></span>' +
+            '<div class="p-main"><div class="p-name" style="font-size:17px">' + fmtDate(s.finishedAt) + '</div>' +
+            '<div class="p-sub">' + rows.length + ' players · ' + money(res.totalIn) + ' pot</div></div><span class="chev">&rsaquo;</span></summary>' +
+            '<div class="night-body">' +
+              rows.map(r => '<div class="hrow"><span>' + esc(r.name) + '</span><span class="mono ' + tone(r.net) + '">' + signed(r.net) + '</span></div>').join("") +
+              verdictHTML(res) + payoutsHTML(res, nm, null, null) +
+              '<div class="foot-acts"><button class="ghost danger" type="button" data-del="' + s.id + '">Delete this night</button></div>' +
+            '</div></details>';
+        }).join("");
+      view.querySelectorAll("details.night").forEach(el => el.addEventListener("toggle", () => {
+        el.open ? open.add(el.dataset.sid) : open.delete(el.dataset.sid);
+      }));
+      view.querySelectorAll("[data-del]").forEach(btn => btn.onclick = async () => {
+        if (!confirm("Delete this night for everyone? It comes out of all-time numbers. This can't be undone.")) return;
+        await run(() => S.store.deleteSession(gid, btn.dataset.del));
+        toast("Night deleted");
+      });
+    }
+  };
+}
+
+function missingGroupHTML(gid){
+  setHeader({crumb: "Poker night", href: S.lockedGid ? null : "#/", title: "Settle Up"});
+  return '<section class="card"><h3>No group called “' + esc(gid) + '”</h3><p>The link may be wrong, or the group was deleted.</p>' +
+    (S.lockedGid ? '' : '<a class="ghost" href="#/">See all groups</a>') + '</section>';
+}
+
+/* ---- router ---- */
+function parseRoute(){
+  const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch (e) { return s; } });
+  if (!parts.length) return {name: "home"};
+  const gid = parts[0];
+  if (parts[1] === "p" && parts[2]) return {name: "entry", gid, pid: parts[2]};
+  if (parts[1] === "table") return {name: "table", gid};
+  if (parts[1] === "history") return {name: "history", gid};
+  return {name: "group", gid};
+}
+function watchGroupData(gid){
+  if (S.gid === gid) return;
+  if (S.unsubGroup) S.unsubGroup();
+  S.gid = gid; S.loaded = false; S.group = null; S.players = []; S.sessions = [];
+  S.unsubGroup = S.store.watchGroup(gid, snap => {
+    if (S.gid !== gid) return;
+    S.group = snap.group; S.players = snap.players || []; S.sessions = snap.sessions || [];
+    S.loaded = true; S.err = null; renderBanner();
+    if (screen) screen.update();
+  }, onDbError);
+}
+function route(){
+  const r = parseRoute();
+  if (r.name === "home" && S.lockedGid){ location.replace("#/" + encodeURIComponent(S.lockedGid)); return; }
+  window.scrollTo(0, 0);
+  if (r.name === "home"){
+    if (S.unsubGroup){ S.unsubGroup(); S.unsubGroup = null; S.gid = null; }
+    screen = HomeScreen();
+    if (!S.unsubHome) S.unsubHome = S.store.watchGroups(list => { S.groups = list; S.err = null; renderBanner(); if (screen) screen.update(); }, onDbError);
+    screen.update();
+    return;
+  }
+  if (S.unsubHome){ S.unsubHome(); S.unsubHome = null; }
+  if (S.gid !== r.gid || !S.loaded){ view.innerHTML = '<p class="loading">Loading…</p>'; setBar(null); }
+  screen = r.name === "entry" ? EntryScreen(r.gid, r.pid)
+         : r.name === "table" ? TableScreen(r.gid)
+         : r.name === "history" ? HistoryScreen(r.gid)
+         : GroupScreen(r.gid);
+  watchGroupData(r.gid);
+  screen.update();
+}
+
+/* ---- boot ---- */
+(async function boot(){
+  const qg = new URLSearchParams(location.search).get("g");
+  if (qg){
+    S.lockedGid = qg;
+    if (parseRoute().name === "home") history.replaceState(null, "", location.pathname + location.search + "#/" + encodeURIComponent(qg));
+  }
+  try {
+    S.store = await initStore();
+  } catch (e){
+    onDbError({message: "Couldn't load Firebase. Check your internet connection and the config at the top of the file. (" + ((e && e.message) || e) + ")"});
+    view.innerHTML = "";
+    return;
+  }
+  renderBanner();
+  window.addEventListener("hashchange", route);
+  route();
 })();
 </script>
 </body>
