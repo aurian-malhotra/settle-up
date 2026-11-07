@@ -652,7 +652,7 @@ function derive(){
       L.pl += r.net; L.nights++;
       (nightsBy[pid] || (nightsBy[pid] = [])).push({
         sid: s.id, at: s.finishedAt || 0, net: r.net, buyIn: r.buyIn, cashOut: r.cashOut,
-        status: s.result.status, count
+        diff: s.result.diff || 0, count
       });
     });
   });
@@ -689,20 +689,31 @@ function recordedToResult(s){
 const nightsLabel = n => n === 0 ? "No nights yet" : (n === 1 ? "1 night" : n + " nights");
 
 /* ---- verdict + payouts (shared by live table and recorded nights) ---- */
-const VERDICT = {
-  perfect:      {cls: "green",  head: "Payouts are perfect"},
-  winnersShort: {cls: "yellow", head: "Winners are receiving less profit"},
-  losersOver:   {cls: "red",    head: "Losers are paying less than they lost"}
-};
-function verdictHTML(res){
-  const v = VERDICT[res.status];
+/* Colors show how far off the pot is, not who is wrong:
+   green = exact, yellow = off by under $1 (fine to settle), red = off by $1+ (recount).
+   `live` is true on tonight's table, where recounting is still possible. */
+const GAP_OK = 100;
+function verdictOf(diff, live){
+  const gap = Math.abs(diff || 0), where = money(gap) + " " + (diff > 0 ? "over" : "under") + " the pot";
+  if (!gap) return {cls: "green", head: "Pot matches"};
+  if (gap < GAP_OK) return {cls: "yellow", head: where + (live ? ", close enough" : "")};
+  return {cls: "red", head: where + (live ? ", recount" : "")};
+}
+function verdictHTML(res, live){
+  const v = verdictOf(res.diff, live);
   let detail;
-  if (res.status === "perfect"){
+  if (v.cls === "green"){
     detail = "Buy-ins and cash-outs match to the penny: <b>" + money(res.totalIn) + "</b>.";
-  } else if (res.status === "winnersShort"){
-    detail = "Cash-outs are <b>" + money(res.diff) + "</b> more than the buy-ins. Winners are paid out of what the losers actually lost, split in proportion to each winner's profit. All-time numbers still log what each person entered.";
   } else {
-    detail = "Cash-outs are <b>" + money(-res.diff) + "</b> less than the buy-ins. Losers only pay what the winners actually won, split in proportion to each loser's loss. All-time numbers still log what each person entered.";
+    detail = "Cash-outs add up to <b>" + money(Math.abs(res.diff)) + "</b> " + (res.diff > 0 ? "more" : "less") + " than the buy-ins. ";
+    if (live && v.cls === "red"){
+      detail += (res.diff > 0 ? "Usually a rebuy that never got entered, or chips counted twice. "
+                              : "Usually chips left off someone's count, or a buy-in entered too high. ") +
+                "Fix the numbers, or hit Recalculate so everyone re-enters their cash-out. ";
+    } else if (live){
+      detail += "That's under $1, so it's fine to settle. ";
+    }
+    detail += "Payments are adjusted by the difference so they still add up, and all-time totals keep what everyone entered.";
   }
   return '<section class="verdict ' + v.cls + '"><h3>' + v.head + '</h3><p>' + detail + '</p></section>';
 }
@@ -927,7 +938,7 @@ function EntryScreen(gid, pid){
         $("#nights").innerHTML = mine.map(n => {
           const after = running; running -= n.net;
           return '<a class="prow" href="' + gHash + '/history/' + encodeURIComponent(n.sid) + '/' + encodeURIComponent(pid) + '">' +
-            '<span class="dot ' + (VERDICT[n.status] || VERDICT.perfect).cls + '"></span>' +
+            '<span class="dot ' + verdictOf(n.diff).cls + '"></span>' +
             '<div class="p-main"><div class="p-name" style="font-size:17px">' + fmtDate(n.at) + '</div>' +
             '<div class="p-sub">In ' + money(n.buyIn) + ' · Out ' + money(n.cashOut) + '</div></div>' +
             '<div class="p-pl ' + tone(n.net) + '">' + signed(n.net) + '<small>Total ' + signed(after) + '</small></div>' +
@@ -990,7 +1001,7 @@ function TableScreen(gid){
       const res = ready ? settle(ents) : null;
       const settledBy = {};
       if (res) res.rows.forEach(r => { settledBy[r.pid] = r; });
-      const cls = res ? VERDICT[res.status].cls : "";
+      const cls = res ? verdictOf(res.diff).cls : "";
       const pct = tin > 0 ? Math.min(100, (tout / tin) * 100) : 0;
 
       let note;
@@ -1017,7 +1028,7 @@ function TableScreen(gid){
             (r && r.settled !== r.net ? '<span class="settles">' + (r.net > 0 ? "gets " : "pays ") + money(Math.abs(r.settled)) + '</span>' : '') + '</div></a>';
       }).join("");
       html += '</div>';
-      if (res) html += verdictHTML(res) + payoutsHTML(res, names, me, "forSel");
+      if (res) html += verdictHTML(res, true) + payoutsHTML(res, names, me, "forSel");
       view.innerHTML = html;
       bindFor();
 
@@ -1033,7 +1044,7 @@ function TableScreen(gid){
           if (!fresh.active || fresh.active.id !== d.active.id){ toast("Someone already finished tonight."); return; }
           const r2 = settle(fresh.entries);
           const gap = Math.abs(r2.diff);
-          const ask = gap >= 100
+          const ask = gap >= GAP_OK
             ? "Pot is off by " + money(gap) + ". Finish anyway?\n\nEveryone's numbers get logged exactly as entered, so a big gap stays in the all-time totals unless you delete the night in History."
             : "Record tonight? These results get added to everyone's all-time numbers.";
           if (!confirm(ask)) return;
@@ -1087,7 +1098,7 @@ function HistoryScreen(gid, focusSid, fromPid){
           const nm = pid => ((s.result.players || {})[pid] || {}).name || "Unknown";
           const rows = res.rows.slice().sort((a, b) => b.net - a.net);
           return '<details class="night' + (s.id === focusSid ? ' focus' : '') + '" data-sid="' + s.id + '"' + (open.has(s.id) ? " open" : "") + '><summary>' +
-            '<span class="dot ' + VERDICT[res.status].cls + '"></span>' +
+            '<span class="dot ' + verdictOf(res.diff).cls + '"></span>' +
             '<div class="p-main"><div class="p-name" style="font-size:17px">' + fmtDate(s.finishedAt) + '</div>' +
             '<div class="p-sub">' + rows.length + ' players · ' + money(res.totalIn) + ' pot</div></div><span class="chev">&rsaquo;</span></summary>' +
             '<div class="night-body">' +
