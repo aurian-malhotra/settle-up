@@ -217,6 +217,10 @@
   .night-body{padding:0 var(--pad) 14px}
   .hrow{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--felt-line);font-size:15px}
   .hrow:first-child{border-top:none}
+  details.night.focus{border-color:rgba(217,164,65,.6)}
+  .hrow.me{margin:0 -8px;padding:6px 8px;border-radius:8px;background:rgba(217,164,65,.12);font-weight:600}
+  .hrow.me + .hrow{border-top-color:transparent}
+  .prow .dot{margin-right:-2px}
 
   /* ---------- bottom bar ---------- */
   .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--felt-deep) 62%,rgba(12,31,27,0));z-index:5}
@@ -637,11 +641,19 @@ function derive(){
     ? S.sessions.find(s => s.id === S.group.activeSessionId && s.status === "open") || null : null;
   const finished = S.sessions.filter(s => s.status === "finished" && s.result)
                              .sort((a, b) => (b.finishedAt || 0) - (a.finishedAt || 0));
-  const life = {};
+  /* life: all-time totals. nightsBy: each player's finished nights, newest first.
+     Both are computed from the finished nights, nothing extra is stored. */
+  const life = {}, nightsBy = {};
   finished.forEach(s => {
-    Object.entries(s.result.players || {}).forEach(([pid, r]) => {
+    const ps = s.result.players || {};
+    const count = Object.keys(ps).length;
+    Object.entries(ps).forEach(([pid, r]) => {
       const L = life[pid] || (life[pid] = {pl: 0, nights: 0});
       L.pl += r.net; L.nights++;
+      (nightsBy[pid] || (nightsBy[pid] = [])).push({
+        sid: s.id, at: s.finishedAt || 0, net: r.net, buyIn: r.buyIn, cashOut: r.cashOut,
+        status: s.result.status, count
+      });
     });
   });
   const entries = active
@@ -651,7 +663,23 @@ function derive(){
                              cashOut: typeof e.cashOut === "number" ? e.cashOut : null}))
         .sort(byName)
     : [];
-  return {pmap, active, finished, life, entries};
+  return {pmap, active, finished, life, nightsBy, entries};
+}
+/* Names list order: whoever played most recently comes first, and players
+   from the same night are ranked by that night's result, biggest winner
+   first. People who have never finished a night go last, A to Z. */
+function playerOrder(players, nightsBy){
+  return players.slice().sort((a, b) => {
+    const A = (nightsBy[a.id] || [])[0], B = (nightsBy[b.id] || [])[0];
+    if (A && B){
+      if (A.at !== B.at) return B.at - A.at;
+      if (A.net !== B.net) return B.net - A.net;
+      return byName(a, b);
+    }
+    if (A) return -1;
+    if (B) return 1;
+    return byName(a, b);
+  });
 }
 function recordedToResult(s){
   const r = s.result;
@@ -664,7 +692,7 @@ const nightsLabel = n => n === 0 ? "No nights yet" : (n === 1 ? "1 night" : n + 
 const VERDICT = {
   perfect:      {cls: "green",  head: "Payouts are perfect"},
   winnersShort: {cls: "yellow", head: "Winners are receiving less profit"},
-  losersOver:   {cls: "red",    head: "Losers owe more than they should"}
+  losersOver:   {cls: "red",    head: "Losers are paying less than they lost"}
 };
 function verdictHTML(res){
   const v = VERDICT[res.status];
@@ -704,7 +732,10 @@ function payoutsHTML(res, names, forPid, selectId){
   }
   html += '<div class="sec-head"><h2>Who pays who</h2></div>';
   if (!res.transfers.length){
-    html += '<p class="even">Everybody broke even. Nobody owes anybody.</p>';
+    const allEven = res.rows.every(r => r.net === 0);
+    html += '<p class="even">' + (allEven ? "Everybody broke even. Nobody owes anybody."
+      : res.status === "winnersShort" ? "Nobody lost money, so there's nothing to pay the winners with."
+      : "Nobody came out ahead, so the losers have nobody to pay.") + '</p>';
   } else {
     html += '<div>' + res.transfers.map(t =>
       '<div class="pay"><div class="pay-who">' + esc(names(t.from)) + '<span class="arw">&rarr;</span>' + esc(names(t.to)) +
@@ -782,7 +813,8 @@ function GroupScreen(gid){
       if (!S.group){ view.innerHTML = missingGroupHTML(gid); setBar(null); return; }
       if (!built) build();
       const d = derive(), me = getMe(gid);
-      const k = JSON.stringify([S.group.name, S.players, d.entries, d.life, me]);
+      const players = playerOrder(S.players, d.nightsBy);
+      const k = JSON.stringify([S.group.name, players, d.entries, d.life, me]);
       if (k === key) return; key = k;
       $("#title").textContent = S.group.name;
 
@@ -799,7 +831,6 @@ function GroupScreen(gid){
 
       const inTonight = {};
       d.entries.forEach(e => { inTonight[e.pid] = e; });
-      const players = S.players.slice().sort(byName);
       $("#plist").innerHTML = players.length ? players.map(p => {
         const L = d.life[p.id] || {pl: 0, nights: 0};
         const e = inTonight[p.id];
@@ -834,7 +865,9 @@ function EntryScreen(gid, pid){
         '<div class="netline"><span class="f-label">Tonight</span><span class="mono flat" id="net">—</span></div>' +
       '</section>' +
       '<p class="errmsg" id="msg"></p>' +
-      '<div class="foot-acts"><button class="ghost danger hidden" id="leave" type="button">Remove ' + esc(player.name) + ' from tonight</button></div>';
+      '<div class="foot-acts"><button class="ghost danger hidden" id="leave" type="button">Remove ' + esc(player.name) + ' from tonight</button></div>' +
+      '<div id="nightsWrap" class="hidden"><div class="sec-head"><h2>P/L by night</h2><span class="sub">Tap for the full game</span></div>' +
+      '<div class="list" id="nights"></div></div>';
     setBar('<div class="bar-row"><button class="primary" id="save" type="button">Save</button></div>');
 
     const buy = $("#buy"), cash = $("#cash");
@@ -881,13 +914,26 @@ function EntryScreen(gid, pid){
       const d = derive();
       const L = d.life[pid] || {pl: 0, nights: 0};
       const e = d.entries.find(x => x.pid === pid);
-      const k = JSON.stringify([L, !!e]);
+      const mine = d.nightsBy[pid] || [];
+      const k = JSON.stringify([L, !!e, mine]);
       if (k !== lifeKey){
         lifeKey = k;
         $("#life").innerHTML = L.nights
           ? 'All-time: <b class="' + tone(L.pl) + '">' + signed(L.pl) + '</b> over ' + nightsLabel(L.nights)
           : 'First night. Good luck.';
         $("#leave").classList.toggle("hidden", !e);
+        /* newest first; "total" is the all-time figure right after that night */
+        let running = L.pl;
+        $("#nights").innerHTML = mine.map(n => {
+          const after = running; running -= n.net;
+          return '<a class="prow" href="' + gHash + '/history/' + encodeURIComponent(n.sid) + '/' + encodeURIComponent(pid) + '">' +
+            '<span class="dot ' + (VERDICT[n.status] || VERDICT.perfect).cls + '"></span>' +
+            '<div class="p-main"><div class="p-name" style="font-size:17px">' + fmtDate(n.at) + '</div>' +
+            '<div class="p-sub">In ' + money(n.buyIn) + ' · Out ' + money(n.cashOut) + '</div></div>' +
+            '<div class="p-pl ' + tone(n.net) + '">' + signed(n.net) + '<small>Total ' + signed(after) + '</small></div>' +
+            '<span class="chev">&rsaquo;</span></a>';
+        }).join("");
+        $("#nightsWrap").classList.toggle("hidden", !mine.length);
       }
       if (!filled){
         filled = true;
@@ -895,7 +941,9 @@ function EntryScreen(gid, pid){
           $("#buy").value = plain(e.buyIn);
           if (e.cashOut !== null) $("#cash").value = plain(e.cashOut);
           window._showNet();
-        } else {
+        } else if (d.active){
+          /* only jump to the keyboard when a game is running; otherwise the
+             person may just be looking at their history */
           setTimeout(() => { const b = $("#buy"); if (b && !b.value) b.focus(); }, 50);
         }
       }
@@ -966,7 +1014,7 @@ function TableScreen(gid){
           '<div class="tsub"><small>In</small>' + money(e.buyIn) + '<span class="sep">·</span><small>Out</small>' +
             (e.cashOut === null ? '<span class="playing">playing</span>' : money(e.cashOut)) + '</div></div>' +
           '<div class="tnet mono ' + (net === null ? "flat" : tone(net)) + '">' + (net === null ? "—" : signed(net)) +
-            (r && r.settled !== r.net ? '<span class="settles">' + (r.settled >= 0 ? "gets " : "pays ") + money(Math.abs(r.settled)) + '</span>' : '') + '</div></a>';
+            (r && r.settled !== r.net ? '<span class="settles">' + (r.net > 0 ? "gets " : "pays ") + money(Math.abs(r.settled)) + '</span>' : '') + '</div></a>';
       }).join("");
       html += '</div>';
       if (res) html += verdictHTML(res) + payoutsHTML(res, names, me, "forSel");
@@ -1010,30 +1058,40 @@ function TableScreen(gid){
   }
 }
 
-function HistoryScreen(gid){
-  let key = "", headerSet = false;
+function HistoryScreen(gid, focusSid, fromPid){
+  let key = "", headerSet = false, scrolled = false;
   const gHash = "#/" + encodeURIComponent(gid);
-  const open = new Set();
+  const open = new Set(focusSid ? [focusSid] : []);
   return {
     update(){
       if (!S.loaded) return;
       if (!S.group){ view.innerHTML = missingGroupHTML(gid); setBar(null); return; }
-      if (!headerSet){ headerSet = true; setHeader({crumb: "‹ " + S.group.name, href: gHash, title: "History"}); setBar(null); }
+      if (!headerSet){
+        headerSet = true;
+        /* arrived from a player's night list: the back link returns to that player */
+        const from = fromPid && S.players.find(p => p.id === fromPid);
+        setHeader(from
+          ? {crumb: "‹ " + from.name, href: gHash + "/p/" + encodeURIComponent(from.id), title: "History"}
+          : {crumb: "‹ " + S.group.name, href: gHash, title: "History"});
+        setBar(null);
+      }
       const d = derive();
       const k = JSON.stringify(d.finished.map(s => [s.id, s.finishedAt]));
       if (k === key) return; key = k;
       if (!d.finished.length){ view.innerHTML = '<p class="hint">No finished nights yet. Hit Finish at the end of a game to record it here.</p>'; return; }
-      view.innerHTML = '<p class="hint" style="margin:0 2px 12px">All-time numbers are added up from these nights. Delete a night and everyone\'s totals update.</p>' +
+      const missing = focusSid && !d.finished.some(s => s.id === focusSid);
+      view.innerHTML = (missing ? '<p class="banner">That night isn\'t in the history anymore. It may have been deleted.</p>' : '') +
+        '<p class="hint" style="margin:0 2px 12px">All-time numbers are added up from these nights. Delete a night and everyone\'s totals update.</p>' +
         d.finished.map(s => {
           const res = recordedToResult(s);
           const nm = pid => ((s.result.players || {})[pid] || {}).name || "Unknown";
           const rows = res.rows.slice().sort((a, b) => b.net - a.net);
-          return '<details class="night" data-sid="' + s.id + '"' + (open.has(s.id) ? " open" : "") + '><summary>' +
+          return '<details class="night' + (s.id === focusSid ? ' focus' : '') + '" data-sid="' + s.id + '"' + (open.has(s.id) ? " open" : "") + '><summary>' +
             '<span class="dot ' + VERDICT[res.status].cls + '"></span>' +
             '<div class="p-main"><div class="p-name" style="font-size:17px">' + fmtDate(s.finishedAt) + '</div>' +
             '<div class="p-sub">' + rows.length + ' players · ' + money(res.totalIn) + ' pot</div></div><span class="chev">&rsaquo;</span></summary>' +
             '<div class="night-body">' +
-              rows.map(r => '<div class="hrow"><span>' + esc(r.name) + '</span><span class="mono ' + tone(r.net) + '">' + signed(r.net) + '</span></div>').join("") +
+              rows.map(r => '<div class="hrow' + (s.id === focusSid && r.pid === fromPid ? ' me' : '') + '"><span>' + esc(r.name) + '</span><span class="mono ' + tone(r.net) + '">' + signed(r.net) + '</span></div>').join("") +
               verdictHTML(res) + payoutsHTML(res, nm, null, null) +
               '<div class="foot-acts"><button class="ghost danger" type="button" data-del="' + s.id + '">Delete this night</button></div>' +
             '</div></details>';
@@ -1046,6 +1104,14 @@ function HistoryScreen(gid){
         await run(() => S.store.deleteSession(gid, btn.dataset.del));
         toast("Night deleted");
       });
+      if (focusSid && !scrolled){
+        scrolled = true;
+        const el = view.querySelector('details.night[data-sid="' + focusSid + '"]');
+        if (el) requestAnimationFrame(() => {
+          const y = el.getBoundingClientRect().top + window.scrollY - 12;
+          window.scrollTo(0, Math.max(0, y));
+        });
+      }
     }
   };
 }
@@ -1063,7 +1129,7 @@ function parseRoute(){
   const gid = parts[0];
   if (parts[1] === "p" && parts[2]) return {name: "entry", gid, pid: parts[2]};
   if (parts[1] === "table") return {name: "table", gid};
-  if (parts[1] === "history") return {name: "history", gid};
+  if (parts[1] === "history") return {name: "history", gid, sid: parts[2] || null, from: parts[3] || null};
   return {name: "group", gid};
 }
 function watchGroupData(gid){
@@ -1092,7 +1158,7 @@ function route(){
   if (S.gid !== r.gid || !S.loaded){ view.innerHTML = '<p class="loading">Loading…</p>'; setBar(null); }
   screen = r.name === "entry" ? EntryScreen(r.gid, r.pid)
          : r.name === "table" ? TableScreen(r.gid)
-         : r.name === "history" ? HistoryScreen(r.gid)
+         : r.name === "history" ? HistoryScreen(r.gid, r.sid, r.from)
          : GroupScreen(r.gid);
   watchGroupData(r.gid);
   screen.update();
